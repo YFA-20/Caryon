@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Inter } from "next/font/google";
 import type { ReactNode } from "react";
 import "./globals.css";
+import { VaultGate } from "@/components/vault/vault-gate";
 
 const serif = Cormorant_Garamond({
   subsets: ["latin"],
@@ -42,7 +43,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="fr" className={`dark ${serif.variable} ${sans.variable}`}>
-      <body>{children}</body>
+      <body>
+        <VaultGate>{children}</VaultGate>
+      </body>
     </html>
   );
 }

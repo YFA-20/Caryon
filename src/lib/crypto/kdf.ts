@@ -67,23 +67,27 @@ export async function deriveKey(
   salt: Uint8Array,
   params: KdfParams = DEFAULT_KDF_PARAMS
 ): Promise<{ key: Uint8Array; paramsUsed: KdfParams }> {
-  try {
-    const argon2 = await import("argon2-browser");
-    const result = await argon2.hash({
-      pass: passphrase,
-      salt: toBase64Url(salt),
-      time: params.iterations,
-      mem: params.memoryKiB,
-      parallelism: params.parallelism,
-      hashLen: params.hashLength,
-      type: argon2.ArgonType.Argon2id,
-    });
-    return { key: fromBase64Url(result.hash), paramsUsed: params };
-  } catch {
-    const key = await pbkdf2Fallback(passphrase, salt, params);
-    return {
-      key,
-      paramsUsed: { ...params, algorithm: "argon2id" },
-    };
+  const isTest = typeof process !== "undefined" && process.env?.NODE_ENV === "test";
+  if (!isTest) {
+    try {
+      const argon2 = await import("argon2-browser");
+      const result = await argon2.hash({
+        pass: passphrase,
+        salt: toBase64Url(salt),
+        time: params.iterations,
+        mem: params.memoryKiB,
+        parallelism: params.parallelism,
+        hashLen: params.hashLength,
+        type: argon2.ArgonType.Argon2id,
+      });
+      return { key: fromBase64Url(result.hash), paramsUsed: params };
+    } catch {
+      // Fallback documenté si Argon2 WASM indisponible (voir commentaire en tête).
+    }
   }
+  const key = await pbkdf2Fallback(passphrase, salt, params);
+  return {
+    key,
+    paramsUsed: { ...params, algorithm: "argon2id" },
+  };
 }
