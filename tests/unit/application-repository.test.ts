@@ -80,6 +80,27 @@ describe("application-repository", () => {
     expect(updated.createdAt).toBe(app.createdAt);
   });
 
+  it("met à jour updatedAt mais préserve createdAt lors d'une modification", async () => {
+    const app = await createApplication(makeInput());
+    const createdAt = app.createdAt;
+    // Attendre un peu pour que le timestamp diffère
+    await new Promise((r) => setTimeout(r, 20));
+    const updated = await updateApplication(app.id, { status: "envoyee" });
+    expect(updated.createdAt).toBe(createdAt);
+    expect(updated.updatedAt).not.toBe(createdAt);
+    expect(new Date(updated.updatedAt).getTime()).toBeGreaterThan(new Date(createdAt).getTime());
+  });
+
+  it("conserve createdAt et updatedAt au format ISO 8601 avec heure", async () => {
+    const app = await createApplication(makeInput());
+    // Format ISO 8601 : YYYY-MM-DDTHH:mm:ss.sssZ
+    expect(app.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    expect(app.updatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    // Vérifier que la date contient bien l'heure (pas juste la date)
+    expect(app.createdAt).toContain("T");
+    expect(app.createdAt).toContain(":");
+  });
+
   it("supprime une candidature", async () => {
     const app = await createApplication(makeInput());
     await deleteApplication(app.id);

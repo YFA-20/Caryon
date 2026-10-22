@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Briefcase, Plus } from "lucide-react";
+import { Briefcase, Pencil, Plus } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   listApplications,
   createApplication,
+  updateApplication,
   deleteApplication,
 } from "@/lib/vault/application-repository";
 import {
@@ -30,10 +31,23 @@ const STATUS_COLORS: Record<ApplicationStatus, string> = {
   abandonnee: "bg-secondary/15 text-secondary border-secondary/25",
 };
 
+function formatDateTime(iso: string): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return d.toLocaleString("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export default function CandidaturesPage() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<Application | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
 
   async function refresh() {
     setLoading(true);
@@ -54,9 +68,8 @@ export default function CandidaturesPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function handleDelete(id: string) {
-    setDeletingId(id);
-    await deleteApplication(id);
     setDeletingId(null);
+    await deleteApplication(id);
     await refresh();
   }
 
@@ -71,17 +84,35 @@ export default function CandidaturesPage() {
               {applications.length > 1 ? "s" : ""}
             </p>
           </div>
-          <Button onClick={() => setShowForm(true)}>
+          <Button
+            onClick={() => {
+              setEditing(null);
+              setShowCreate(true);
+            }}
+          >
             <Plus className="h-4 w-4" aria-hidden="true" />
             Nouvelle candidature
           </Button>
         </div>
 
-        {showForm && (
+        {showCreate && (
           <ApplicationForm
-            onClose={() => setShowForm(false)}
-            onCreated={() => {
-              setShowForm(false);
+            mode="create"
+            onClose={() => setShowCreate(false)}
+            onSaved={() => {
+              setShowCreate(false);
+              refresh();
+            }}
+          />
+        )}
+
+        {editing && (
+          <ApplicationForm
+            mode="edit"
+            application={editing}
+            onClose={() => setEditing(null)}
+            onSaved={() => {
+              setEditing(null);
               refresh();
             }}
           />
@@ -101,7 +132,13 @@ export default function CandidaturesPage() {
               Commencez à suivre vos candidatures. Elles seront chiffrées et stockées uniquement sur
               cet appareil.
             </CardDescription>
-            <Button className="mt-6" onClick={() => setShowForm(true)}>
+            <Button
+              className="mt-6"
+              onClick={() => {
+                setEditing(null);
+                setShowCreate(true);
+              }}
+            >
               <Plus className="h-4 w-4" aria-hidden="true" />
               Créer ma première candidature
             </Button>
@@ -129,15 +166,34 @@ export default function CandidaturesPage() {
                 {app.notes && (
                   <p className="mt-3 line-clamp-2 text-sm text-secondary">{app.notes}</p>
                 )}
-                <div className="mt-4 flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() => setDeletingId(app.id)}
-                    className="text-xs text-danger hover:underline"
-                  >
-                    Supprimer
-                  </button>
+
+                <div className="mt-4 flex items-center justify-between border-t border-subtle pt-3 text-xs text-secondary">
+                  <div>
+                    <p>Créée le {formatDateTime(app.createdAt)}</p>
+                    <p>Modifiée le {formatDateTime(app.updatedAt)}</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCreate(false);
+                        setEditing(app);
+                      }}
+                      className="inline-flex items-center gap-1 text-lavender hover:underline"
+                    >
+                      <Pencil className="h-3 w-3" aria-hidden="true" />
+                      Modifier
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeletingId(app.id)}
+                      className="text-danger hover:underline"
+                    >
+                      Supprimer
+                    </button>
+                  </div>
                 </div>
+
                 {deletingId === app.id && (
                   <div className="mt-3 rounded-xl border border-danger/25 bg-danger/10 p-3 text-sm">
                     <p className="text-danger">Supprimer cette candidature ?</p>
@@ -168,38 +224,51 @@ export default function CandidaturesPage() {
   );
 }
 
-function ApplicationForm({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+interface ApplicationFormProps {
+  mode: "create" | "edit";
+  application?: Application;
+  onClose: () => void;
+  onSaved: () => void;
+}
+
+function ApplicationForm({ mode, application, onClose, onSaved }: ApplicationFormProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isEdit = mode === "edit" && application;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
     setBusy(true);
     const form = new FormData(e.currentTarget);
+    const payload = {
+      company: String(form.get("company") ?? ""),
+      position: String(form.get("position") ?? ""),
+      type: String(form.get("type") ?? "cdi") as Application["type"],
+      offerUrl: String(form.get("offerUrl") ?? ""),
+      location: String(form.get("location") ?? ""),
+      remote: form.get("remote") === "on",
+      salary: String(form.get("salary") ?? ""),
+      appliedAt: String(form.get("appliedAt") ?? "") || undefined,
+      deadline: String(form.get("deadline") ?? "") || undefined,
+      source: String(form.get("source") ?? ""),
+      contactName: String(form.get("contactName") ?? ""),
+      contactEmail: String(form.get("contactEmail") ?? ""),
+      contactPhone: String(form.get("contactPhone") ?? ""),
+      status: String(form.get("status") ?? "brouillon") as ApplicationStatus,
+      priority: (application?.priority ?? "normale") as Application["priority"],
+      notes: String(form.get("notes") ?? ""),
+      tags: application?.tags ?? [],
+    };
     try {
-      await createApplication({
-        company: String(form.get("company") ?? ""),
-        position: String(form.get("position") ?? ""),
-        type: String(form.get("type") ?? "cdi") as Application["type"],
-        offerUrl: String(form.get("offerUrl") ?? ""),
-        location: String(form.get("location") ?? ""),
-        remote: form.get("remote") === "on",
-        salary: String(form.get("salary") ?? ""),
-        appliedAt: String(form.get("appliedAt") ?? "") || undefined,
-        deadline: String(form.get("deadline") ?? "") || undefined,
-        source: String(form.get("source") ?? ""),
-        contactName: String(form.get("contactName") ?? ""),
-        contactEmail: String(form.get("contactEmail") ?? ""),
-        contactPhone: String(form.get("contactPhone") ?? ""),
-        status: String(form.get("status") ?? "brouillon") as ApplicationStatus,
-        priority: "normale",
-        notes: String(form.get("notes") ?? ""),
-        tags: [],
-      });
-      onCreated();
+      if (isEdit) {
+        await updateApplication(application.id, payload);
+      } else {
+        await createApplication(payload);
+      }
+      onSaved();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur lors de la création");
+      setError(err instanceof Error ? err.message : "Erreur lors de l'enregistrement");
     } finally {
       setBusy(false);
     }
@@ -211,7 +280,15 @@ function ApplicationForm({ onClose, onCreated }: { onClose: () => void; onCreate
 
   return (
     <Card className="p-6">
-      <h2 className="font-serif text-xl font-semibold text-primary">Nouvelle candidature</h2>
+      <h2 className="font-serif text-xl font-semibold text-primary">
+        {isEdit ? `Modifier : ${application.position}` : "Nouvelle candidature"}
+      </h2>
+      {isEdit && (
+        <p className="mt-1 text-xs text-secondary">
+          Créée le {formatDateTime(application.createdAt)} · Dernière modification le{" "}
+          {formatDateTime(application.updatedAt)}
+        </p>
+      )}
       <form onSubmit={handleSubmit} className="mt-4 space-y-4">
         <div className="grid gap-4 md:grid-cols-2">
           <div>
@@ -224,6 +301,7 @@ function ApplicationForm({ onClose, onCreated }: { onClose: () => void; onCreate
               required
               className={inputClass}
               placeholder="Ex: Atelier Nova"
+              defaultValue={application?.company ?? ""}
             />
           </div>
           <div>
@@ -236,13 +314,19 @@ function ApplicationForm({ onClose, onCreated }: { onClose: () => void; onCreate
               required
               className={inputClass}
               placeholder="Ex: Développeur front-end"
+              defaultValue={application?.position ?? ""}
             />
           </div>
           <div>
             <label htmlFor="type" className={labelClass}>
               Type
             </label>
-            <select id="type" name="type" className={inputClass} defaultValue="cdi">
+            <select
+              id="type"
+              name="type"
+              className={inputClass}
+              defaultValue={application?.type ?? "cdi"}
+            >
               <option value="stage">Stage</option>
               <option value="alternance">Alternance</option>
               <option value="cdi">CDI</option>
@@ -254,7 +338,12 @@ function ApplicationForm({ onClose, onCreated }: { onClose: () => void; onCreate
             <label htmlFor="status" className={labelClass}>
               Statut
             </label>
-            <select id="status" name="status" className={inputClass} defaultValue="brouillon">
+            <select
+              id="status"
+              name="status"
+              className={inputClass}
+              defaultValue={application?.status ?? "brouillon"}
+            >
               {Object.entries(APPLICATION_STATUS_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
@@ -271,13 +360,20 @@ function ApplicationForm({ onClose, onCreated }: { onClose: () => void; onCreate
               name="location"
               className={inputClass}
               placeholder="Ex: Paris, hybride"
+              defaultValue={application?.location ?? ""}
             />
           </div>
           <div>
             <label htmlFor="salary" className={labelClass}>
               Salaire / gratification
             </label>
-            <input id="salary" name="salary" className={inputClass} placeholder="Ex: 45-55k€" />
+            <input
+              id="salary"
+              name="salary"
+              className={inputClass}
+              placeholder="Ex: 45-55k€"
+              defaultValue={application?.salary ?? ""}
+            />
           </div>
           <div>
             <label htmlFor="offerUrl" className={labelClass}>
@@ -289,6 +385,7 @@ function ApplicationForm({ onClose, onCreated }: { onClose: () => void; onCreate
               type="url"
               className={inputClass}
               placeholder="https://..."
+              defaultValue={application?.offerUrl ?? ""}
             />
           </div>
           <div>
@@ -299,7 +396,8 @@ function ApplicationForm({ onClose, onCreated }: { onClose: () => void; onCreate
               id="source"
               name="source"
               className={inputClass}
-              placeholder="Ex: LinkedIn, Indeed..."
+              placeholder="Ex: LinkedIn, Indeed…"
+              defaultValue={application?.source ?? ""}
             />
           </div>
           <div>
@@ -311,6 +409,7 @@ function ApplicationForm({ onClose, onCreated }: { onClose: () => void; onCreate
               name="contactName"
               className={inputClass}
               placeholder="Nom du recruteur"
+              defaultValue={application?.contactName ?? ""}
             />
           </div>
           <div>
@@ -323,19 +422,32 @@ function ApplicationForm({ onClose, onCreated }: { onClose: () => void; onCreate
               type="email"
               className={inputClass}
               placeholder="recruteur@entreprise.fr"
+              defaultValue={application?.contactEmail ?? ""}
             />
           </div>
           <div>
             <label htmlFor="appliedAt" className={labelClass}>
               Date de candidature
             </label>
-            <input id="appliedAt" name="appliedAt" type="date" className={inputClass} />
+            <input
+              id="appliedAt"
+              name="appliedAt"
+              type="date"
+              className={inputClass}
+              defaultValue={application?.appliedAt?.slice(0, 10) ?? ""}
+            />
           </div>
           <div>
             <label htmlFor="deadline" className={labelClass}>
               Date limite
             </label>
-            <input id="deadline" name="deadline" type="date" className={inputClass} />
+            <input
+              id="deadline"
+              name="deadline"
+              type="date"
+              className={inputClass}
+              defaultValue={application?.deadline?.slice(0, 10) ?? ""}
+            />
           </div>
         </div>
         <div>
@@ -348,10 +460,16 @@ function ApplicationForm({ onClose, onCreated }: { onClose: () => void; onCreate
             rows={3}
             className={inputClass}
             placeholder="Informations utiles, ressenti, prochaines étapes..."
+            defaultValue={application?.notes ?? ""}
           />
         </div>
         <label className="flex items-center gap-2 text-sm text-secondary">
-          <input type="checkbox" name="remote" className="rounded border-subtle accent-lavender" />
+          <input
+            type="checkbox"
+            name="remote"
+            className="rounded border-subtle accent-lavender"
+            defaultChecked={application?.remote ?? false}
+          />
           Télétravail possible
         </label>
         {error && (
@@ -364,7 +482,7 @@ function ApplicationForm({ onClose, onCreated }: { onClose: () => void; onCreate
             Annuler
           </Button>
           <Button type="submit" disabled={busy}>
-            {busy ? "Enregistrement…" : "Enregistrer"}
+            {busy ? "Enregistrement…" : isEdit ? "Enregistrer les modifications" : "Enregistrer"}
           </Button>
         </div>
       </form>
