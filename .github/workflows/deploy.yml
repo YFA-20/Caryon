@@ -1,0 +1,91 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Permissions minimales : le déploiement sur Cloudflare Pages utilise OIDC
+# (pas de secret long terme stocké dans GitHub). Aucun accès écrit au dépôt.
+permissions:
+  contents: read
+  id-token: write # requis pour l'authentification OIDC Cloudflare
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Déploiement Cloudflare Pages
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Non-bloquant tant que les secrets Cloudflare ne sont pas configurés.
+    # Le déploiement production peut aussi se faire via l'intégration native
+    # Cloudflare Pages ↔ GitHub (sans secrets dans GitHub Actions).
+    continue-on-error: true
+    environment:
+      name: production
+      url: https://caryon.pages.dev
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install (reproductible)
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tests unitaires
+        run: npm run test
+
+      - name: Build (export statique + CSP hashée)
+        run: npm run build
+
+      - name: Vérifier la CSP (hashes présents)
+        run: |
+          if ! grep -q "sha256-" out/_headers; then
+            echo "::error::La CSP ne contient aucun hash SHA-256 — les scripts inline Next.js seraient bloqués."
+            exit 1
+          fi
+          echo "CSP validée : $(grep -o "sha256-[^']*" out/_headers | wc -l) hash(es) présent(s)."
+
+      - name: Vérifier les fichiers critiques
+        run: |
+          for f in out/index.html out/sw.js out/manifest.webmanifest out/_headers; do
+            if [ ! -f "$f" ]; then
+              echo "::error::Fichier manquant: $f"
+              exit 1
+            fi
+          done
+          echo "Tous les fichiers critiques sont présents."
+
+      - name: Vérifier la configuration Cloudflare
+        id: check-secrets
+        run: |
+          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ] || [ -z "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Secrets Cloudflare non configurés (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID)."
+            echo "::warning::Le déploiement est ignoré. Voir docs/DEPLOYMENT.md pour la configuration."
+            echo "::warning::Alternative : connecter Cloudflare Pages directement au dépôt GitHub (intégration native, sans secrets)."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Déployer sur Cloudflare Pages
+        if: steps.check-secrets.outputs.configured == 'true'
+        uses: cloudflare/wrangler-action@39c2b5a1226e5718f92a2749a8988cce31e78a76 # v3.10.0
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy out --project-name=caryon --branch=main

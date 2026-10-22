@@ -3,13 +3,9 @@
  * Sert le répertoire `out/` sur 127.0.0.1:3100, sans dépendance externe.
  * Sécurité : écoute UNIQUEMENT sur l'interface loopback (jamais 0.0.0.0).
  *
- * En production (Cloudflare), `public/_headers` applique la CSP stricte.
- * En test E2E local, la CSP est assouplie (`script-src 'self' 'unsafe-inline'`)
- * UNIQUEMENT parce que Next.js injecte des scripts inline d'hydratation dans le
- * HTML exporté — un artefact du serveur de test, pas de l'app. Les en-têtes de
- * sécurité testés (nosniff, X-Frame-Options, Referrer-Policy, COOP/CORP) restent
- * stricts. La CSP stricte de production est vérifiée séparément (test E2E qui
- * contrôle la valeur de l'en-tête, et déploiement Cloudflare avec _headers).
+ * La CSP est lue depuis `out/_headers` (généré par postbuild avec les hashes
+ * SHA-256 des scripts inline de Next.js). Si le fichier est absent, fallback
+ * sur une CSP stricte sans 'unsafe-inline' pour script-src.
  */
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
@@ -31,6 +27,33 @@ const MIME = {
   ".woff2": "font/woff2",
 };
 
+async function loadCspFromHeaders() {
+  try {
+    const headers = await readFile(join(ROOT, "_headers"), "utf8");
+    const match = headers.match(/Content-Security-Policy:\s*(.+)/);
+    if (match) return match[1].trim();
+  } catch {
+    // fallback
+  }
+  return [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self' data:",
+    "connect-src 'self'",
+    "worker-src 'self' blob:",
+    "manifest-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ].join("; ");
+}
+
+const CSP = await loadCspFromHeaders();
+console.log(`[serve-static] CSP chargée (${CSP.length} caractères).`);
+
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url ?? "/", `http://${HOST}:${PORT}`);
@@ -50,10 +73,7 @@ const server = createServer(async (req, res) => {
     res.writeHead(200, {
       "Content-Type": MIME[extname(filePath)] ?? "application/octet-stream",
       "Cache-Control": "no-cache",
-      // CSP assouplie en test local uniquement (voir commentaire en tête).
-      // La CSP de production (public/_headers) reste stricte : script-src 'self'.
-      "Content-Security-Policy":
-        "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+      "Content-Security-Policy": CSP,
       "X-Content-Type-Options": "nosniff",
       "X-Frame-Options": "DENY",
       "Referrer-Policy": "no-referrer",
