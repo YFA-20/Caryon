@@ -2,12 +2,23 @@
 
 import { Bell, Lock, Unlock } from "lucide-react";
 import { useUiStore } from "@/store/ui-store";
+import { useVaultStore } from "@/store/vault-store";
+import { lock } from "@/lib/vault/vault-service";
 import { formatDateFr, todayIso } from "@/lib/utils/date";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 export function Header() {
-  const { vaultUnlocked, demoMode, firstName, setVaultUnlocked, setDemoMode } = useUiStore();
+  const { demoMode, firstName, setDemoMode } = useUiStore();
+  const { status, setStatus } = useVaultStore();
+  const unlocked = status === "unlocked";
+
+  function handleLock() {
+    lock();
+    setStatus("locked");
+    // Force le rechargement pour réafficher le portail de déverrouillage
+    window.location.reload();
+  }
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-subtle bg-surface/80 px-4 backdrop-blur-md md:px-8">
@@ -19,8 +30,8 @@ export function Header() {
         <Badge variant={demoMode ? "lavender" : "default"}>
           {demoMode ? "Mode démonstration" : "Hors ligne · local"}
         </Badge>
-        <Badge variant={vaultUnlocked ? "success" : "warning"}>
-          {vaultUnlocked ? "Coffre déverrouillé" : "Coffre verrouillé"}
+        <Badge variant={unlocked ? "success" : "warning"}>
+          {unlocked ? "Coffre déverrouillé" : "Coffre verrouillé"}
         </Badge>
       </div>
 
@@ -44,22 +55,18 @@ export function Header() {
       </Button>
 
       <Button
-        variant={vaultUnlocked ? "outline" : "primary"}
+        variant={unlocked ? "outline" : "primary"}
         size="sm"
-        onClick={() => setVaultUnlocked(!vaultUnlocked)}
-        aria-label={vaultUnlocked ? "Verrouiller le coffre" : "Déverrouiller le coffre"}
-        title={
-          vaultUnlocked
-            ? "Verrouiller le coffre (simulation d'état — le vrai coffre arrive ensuite)"
-            : "Déverrouiller le coffre (simulation d'état — le vrai coffre arrive ensuite)"
-        }
+        onClick={handleLock}
+        aria-label={unlocked ? "Verrouiller le coffre" : "Coffre verrouillé"}
+        title={unlocked ? "Verrouiller le coffre" : "Coffre verrouillé"}
       >
-        {vaultUnlocked ? (
+        {unlocked ? (
           <Unlock className="h-4 w-4" aria-hidden />
         ) : (
           <Lock className="h-4 w-4" aria-hidden />
         )}
-        <span className="hidden sm:inline">{vaultUnlocked ? "Verrouiller" : "Déverrouiller"}</span>
+        <span className="hidden sm:inline">{unlocked ? "Verrouiller" : "Verrouillé"}</span>
       </Button>
 
       <div

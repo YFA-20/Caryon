@@ -1,0 +1,373 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { Briefcase, Plus } from "lucide-react";
+import { AppShell } from "@/components/layout/app-shell";
+import { Button } from "@/components/ui/button";
+import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  listApplications,
+  createApplication,
+  deleteApplication,
+} from "@/lib/vault/application-repository";
+import {
+  APPLICATION_STATUS_LABELS,
+  APPLICATION_TYPE_LABELS,
+  type Application,
+  type ApplicationStatus,
+} from "@/lib/schema/application";
+
+const STATUS_COLORS: Record<ApplicationStatus, string> = {
+  brouillon: "bg-secondary/15 text-secondary border-secondary/25",
+  a_envoyer: "bg-lavender/15 text-lavender border-lavender/25",
+  envoyee: "bg-primary/10 text-primary border-primary/20",
+  en_attente: "bg-warning/15 text-warning border-warning/25",
+  entretien: "bg-success/15 text-success border-success/25",
+  offre_recue: "bg-success/15 text-success border-success/25",
+  acceptee: "bg-success/15 text-success border-success/25",
+  refusee: "bg-danger/15 text-danger border-danger/25",
+  abandonnee: "bg-secondary/15 text-secondary border-secondary/25",
+};
+
+export default function CandidaturesPage() {
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+
+  async function refresh() {
+    setLoading(true);
+    try {
+      const apps = await listApplications();
+      setApplications(apps);
+    } catch (err) {
+      console.error("[candidatures] Erreur chargement:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function handleDelete(id: string) {
+    setDeletingId(id);
+    await deleteApplication(id);
+    setDeletingId(null);
+    await refresh();
+  }
+
+  return (
+    <AppShell>
+      <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="text-gradient font-serif text-4xl font-bold">Mes candidatures</h1>
+            <p className="mt-2 text-secondary">
+              {applications.length} candidature{applications.length > 1 ? "s" : ""} enregistrée
+              {applications.length > 1 ? "s" : ""}
+            </p>
+          </div>
+          <Button onClick={() => setShowForm(true)}>
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            Nouvelle candidature
+          </Button>
+        </div>
+
+        {showForm && (
+          <ApplicationForm
+            onClose={() => setShowForm(false)}
+            onCreated={() => {
+              setShowForm(false);
+              refresh();
+            }}
+          />
+        )}
+
+        {loading ? (
+          <div className="flex justify-center py-14">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-lavender border-t-transparent" />
+          </div>
+        ) : applications.length === 0 ? (
+          <Card className="flex flex-col items-center px-6 py-14 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-card-elevated shadow-glow">
+              <Briefcase className="h-7 w-7 text-lavender" aria-hidden="true" />
+            </div>
+            <CardTitle className="mt-4 font-serif text-xl">Aucune candidature</CardTitle>
+            <CardDescription className="mt-2 max-w-md">
+              Commencez à suivre vos candidatures. Elles seront chiffrées et stockées uniquement sur
+              cet appareil.
+            </CardDescription>
+            <Button className="mt-6" onClick={() => setShowForm(true)}>
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              Créer ma première candidature
+            </Button>
+          </Card>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            {applications.map((app) => (
+              <Card key={app.id} className="p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="truncate font-serif text-lg font-semibold text-primary">
+                      {app.position}
+                    </h3>
+                    <p className="truncate text-sm text-secondary">{app.company}</p>
+                  </div>
+                  <Badge className={STATUS_COLORS[app.status]}>
+                    {APPLICATION_STATUS_LABELS[app.status]}
+                  </Badge>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2 text-xs text-secondary">
+                  <span>{APPLICATION_TYPE_LABELS[app.type]}</span>
+                  {app.location && <span>· {app.location}</span>}
+                  {app.remote && <span>· Télétravail</span>}
+                </div>
+                {app.notes && (
+                  <p className="mt-3 line-clamp-2 text-sm text-secondary">{app.notes}</p>
+                )}
+                <div className="mt-4 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setDeletingId(app.id)}
+                    className="text-xs text-danger hover:underline"
+                  >
+                    Supprimer
+                  </button>
+                </div>
+                {deletingId === app.id && (
+                  <div className="mt-3 rounded-xl border border-danger/25 bg-danger/10 p-3 text-sm">
+                    <p className="text-danger">Supprimer cette candidature ?</p>
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(app.id)}
+                        className="rounded-lg bg-danger px-3 py-1 text-xs text-white"
+                      >
+                        Confirmer
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeletingId(null)}
+                        className="rounded-lg border border-subtle px-3 py-1 text-xs text-secondary"
+                      >
+                        Annuler
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    </AppShell>
+  );
+}
+
+function ApplicationForm({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    setBusy(true);
+    const form = new FormData(e.currentTarget);
+    try {
+      await createApplication({
+        company: String(form.get("company") ?? ""),
+        position: String(form.get("position") ?? ""),
+        type: String(form.get("type") ?? "cdi") as Application["type"],
+        offerUrl: String(form.get("offerUrl") ?? ""),
+        location: String(form.get("location") ?? ""),
+        remote: form.get("remote") === "on",
+        salary: String(form.get("salary") ?? ""),
+        appliedAt: String(form.get("appliedAt") ?? "") || undefined,
+        deadline: String(form.get("deadline") ?? "") || undefined,
+        source: String(form.get("source") ?? ""),
+        contactName: String(form.get("contactName") ?? ""),
+        contactEmail: String(form.get("contactEmail") ?? ""),
+        contactPhone: String(form.get("contactPhone") ?? ""),
+        status: String(form.get("status") ?? "brouillon") as ApplicationStatus,
+        priority: "normale",
+        notes: String(form.get("notes") ?? ""),
+        tags: [],
+      });
+      onCreated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur lors de la création");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const inputClass =
+    "w-full rounded-xl border border-subtle bg-surface px-4 py-2.5 text-sm text-primary placeholder:text-secondary/50 focus:border-lavender focus:outline-none focus:ring-2 focus:ring-lavender/20";
+  const labelClass = "mb-1.5 block text-sm text-secondary";
+
+  return (
+    <Card className="p-6">
+      <h2 className="font-serif text-xl font-semibold text-primary">Nouvelle candidature</h2>
+      <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label htmlFor="company" className={labelClass}>
+              Entreprise *
+            </label>
+            <input
+              id="company"
+              name="company"
+              required
+              className={inputClass}
+              placeholder="Ex: Atelier Nova"
+            />
+          </div>
+          <div>
+            <label htmlFor="position" className={labelClass}>
+              Poste *
+            </label>
+            <input
+              id="position"
+              name="position"
+              required
+              className={inputClass}
+              placeholder="Ex: Développeur front-end"
+            />
+          </div>
+          <div>
+            <label htmlFor="type" className={labelClass}>
+              Type
+            </label>
+            <select id="type" name="type" className={inputClass} defaultValue="cdi">
+              <option value="stage">Stage</option>
+              <option value="alternance">Alternance</option>
+              <option value="cdi">CDI</option>
+              <option value="cdd">CDD</option>
+              <option value="freelance">Freelance</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="status" className={labelClass}>
+              Statut
+            </label>
+            <select id="status" name="status" className={inputClass} defaultValue="brouillon">
+              {Object.entries(APPLICATION_STATUS_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="location" className={labelClass}>
+              Localisation
+            </label>
+            <input
+              id="location"
+              name="location"
+              className={inputClass}
+              placeholder="Ex: Paris, hybride"
+            />
+          </div>
+          <div>
+            <label htmlFor="salary" className={labelClass}>
+              Salaire / gratification
+            </label>
+            <input id="salary" name="salary" className={inputClass} placeholder="Ex: 45-55k€" />
+          </div>
+          <div>
+            <label htmlFor="offerUrl" className={labelClass}>
+              URL de l&apos;offre
+            </label>
+            <input
+              id="offerUrl"
+              name="offerUrl"
+              type="url"
+              className={inputClass}
+              placeholder="https://..."
+            />
+          </div>
+          <div>
+            <label htmlFor="source" className={labelClass}>
+              Source
+            </label>
+            <input
+              id="source"
+              name="source"
+              className={inputClass}
+              placeholder="Ex: LinkedIn, Indeed..."
+            />
+          </div>
+          <div>
+            <label htmlFor="contactName" className={labelClass}>
+              Contact recruteur
+            </label>
+            <input
+              id="contactName"
+              name="contactName"
+              className={inputClass}
+              placeholder="Nom du recruteur"
+            />
+          </div>
+          <div>
+            <label htmlFor="contactEmail" className={labelClass}>
+              Email du contact
+            </label>
+            <input
+              id="contactEmail"
+              name="contactEmail"
+              type="email"
+              className={inputClass}
+              placeholder="recruteur@entreprise.fr"
+            />
+          </div>
+          <div>
+            <label htmlFor="appliedAt" className={labelClass}>
+              Date de candidature
+            </label>
+            <input id="appliedAt" name="appliedAt" type="date" className={inputClass} />
+          </div>
+          <div>
+            <label htmlFor="deadline" className={labelClass}>
+              Date limite
+            </label>
+            <input id="deadline" name="deadline" type="date" className={inputClass} />
+          </div>
+        </div>
+        <div>
+          <label htmlFor="notes" className={labelClass}>
+            Notes personnelles
+          </label>
+          <textarea
+            id="notes"
+            name="notes"
+            rows={3}
+            className={inputClass}
+            placeholder="Informations utiles, ressenti, prochaines étapes..."
+          />
+        </div>
+        <label className="flex items-center gap-2 text-sm text-secondary">
+          <input type="checkbox" name="remote" className="rounded border-subtle accent-lavender" />
+          Télétravail possible
+        </label>
+        {error && (
+          <p role="alert" className="rounded-xl bg-danger/10 px-4 py-2.5 text-sm text-danger">
+            {error}
+          </p>
+        )}
+        <div className="flex justify-end gap-3">
+          <Button type="button" variant="ghost" onClick={onClose}>
+            Annuler
+          </Button>
+          <Button type="submit" disabled={busy}>
+            {busy ? "Enregistrement…" : "Enregistrer"}
+          </Button>
+        </div>
+      </form>
+    </Card>
+  );
+}
