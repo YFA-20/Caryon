@@ -26,6 +26,12 @@ adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
 
 ### Sécurité
 
+- **CI corrigée après premier run** : CodeQL activé uniquement pour le propriétaire
+  du dépôt (Advanced Security indisponible sinon, échec gracieux) ; audit des
+  dépendances scindé en **production (bloquant ≥ high)** et **dev (informatif)** ;
+  audit des permissions des workflows durci (regex YAML, faux positifs corrigés).
+- **Supply chain** : override `postcss` → 8.5.31 (corrige 2 vulnérabilités dont 1 HIGH
+  dans le bundle Next.js livré) ; `npm audit --omit=dev` = **0 vulnérabilité**.
 - CSP test local assouplie uniquement pour les scripts inline d'hydratation Next.js
   (artefact du serveur de test) ; CSP de production stricte vérifiée par test E2E
   (`public/_headers` : `script-src 'self'` sans `unsafe-inline`).
