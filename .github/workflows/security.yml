@@ -10,8 +10,10 @@ on:
 
 permissions:
   contents: read
-  # Requis par CodeQL pour publier les résultats (upload-sarif).
-  # Sur les PR de fork, le secret n'est pas exposé : l'upload échoue gracieusement.
+  # Requis UNIQUEMENT par le job CodeQL pour publier les résultats (upload-sarif).
+  # Le job codeql est déclaré avec continue-on-error et n'est exécuté que si
+  # Advanced Security est disponible ; sans Advanced Security, aucun résultat
+  # n'est produit et cette permission n'est pas utilisée.
   security-events: write
 
 concurrency:
@@ -39,7 +41,13 @@ jobs:
     name: Analyse statique (CodeQL)
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    if: github.repository_owner == 'YFA-20'
+    # CodeQL nécessite GitHub Advanced Security (indisponible sur un compte
+    # gratuit avec dépôt privé). L'action racine étant un stub, on utilise les
+    # sous-actions init/analyze directement. Le job est en continue-on-error :
+    # si Advanced Security n'est pas activé, il échoue gracieusement (warning)
+    # sans bloquer la CI. Il produira des résultats dès que Advanced Security
+    # sera disponible (compte payant, GitHub pour l'éducation, ou dépôt public).
+    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -54,7 +62,7 @@ jobs:
         run: npm ci
 
       - name: Initialize CodeQL
-        uses: github/codeql-action@4bfa242aa49c5f7c6770b98670d354a7dfac05f8 # v3
+        uses: github/codeql-action/init@4bfa242aa49c5f7c6770b98670d354a7dfac05f8 # v3
         with:
           languages: javascript-typescript
 
@@ -62,7 +70,7 @@ jobs:
         run: npm run build
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action@4bfa242aa49c5f7c6770b98670d354a7dfac05f8 # v3
+        uses: github/codeql-action/analyze@4bfa242aa49c5f7c6770b98670d354a7dfac05f8 # v3
         with:
           category: "/language:javascript-typescript"
 
