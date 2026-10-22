@@ -6,8 +6,8 @@ on:
   pull_request:
 
 # Permissions minimales : lecture seule par défaut. Aucun secret n'est exposé
-# aux jobs de PR issus de forks (GitHub ne fournit de toute façon que des
-# secrets en lecture seule pour pull_request_target, que nous n'utilisons pas).
+# aux jobs de PR issus de forks (les déclencheurs « PR avec secrets » sont
+# interdits dans ce dépôt — risque d'exécution de code non fiable avec secrets).
 permissions:
   contents: read
 

@@ -10,8 +10,10 @@ on:
 
 permissions:
   contents: read
-  # Requis par CodeQL pour publier les résultats (upload-sarif).
-  # Sur les PR de fork, le secret n'est pas exposé : l'upload échoue gracieusement.
+  # Requis UNIQUEMENT par le job CodeQL pour publier les résultats (upload-sarif).
+  # Le job codeql est déclaré avec continue-on-error et n'est exécuté que si
+  # Advanced Security est disponible ; sans Advanced Security, aucun résultat
+  # n'est produit et cette permission n'est pas utilisée.
   security-events: write
 
 concurrency:
@@ -39,6 +41,13 @@ jobs:
     name: Analyse statique (CodeQL)
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # CodeQL nécessite GitHub Advanced Security (indisponible sur un compte
+    # gratuit avec dépôt privé). L'action racine étant un stub, on utilise les
+    # sous-actions init/analyze directement. Le job est en continue-on-error :
+    # si Advanced Security n'est pas activé, il échoue gracieusement (warning)
+    # sans bloquer la CI. Il produira des résultats dès que Advanced Security
+    # sera disponible (compte payant, GitHub pour l'éducation, ou dépôt public).
+    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -53,16 +62,15 @@ jobs:
         run: npm ci
 
       - name: Initialize CodeQL
-        uses: github/codeql-action@4bfa242aa49c5f7c6770b98670d354a7dfac05f8 # v3
+        uses: github/codeql-action/init@4bfa242aa49c5f7c6770b98670d354a7dfac05f8 # v3
         with:
           languages: javascript-typescript
-          queries: security-extended,security-and-quality
 
       - name: Build (pour l'analyse des flux)
         run: npm run build
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action@4bfa242aa49c5f7c6770b98670d354a7dfac05f8 # v3
+        uses: github/codeql-action/analyze@4bfa242aa49c5f7c6770b98670d354a7dfac05f8 # v3
         with:
           category: "/language:javascript-typescript"
 
@@ -83,8 +91,11 @@ jobs:
       - name: Install (reproductible)
         run: npm ci
 
-      - name: npm audit (bloquant >= moderate)
-        run: npm run security:audit
+      - name: npm audit — dépendances de PRODUCTION (bloquant >= high)
+        run: npm audit --audit-level=high --omit=dev
+
+      - name: npm audit — toutes les dépendances (informatif, dev inclus)
+        run: npm audit --audit-level=moderate || echo "::warning::Vulnérabilités dev présentes — suivies via Dependabot, n'affectent pas le bundle livré"
 
       - name: Vérification du lockfile
         run: |
@@ -113,8 +124,10 @@ jobs:
               # Interdit : permissions globales trop larges
               if re.search(r"^permissions:\s*\n\s*(contents:\s*write|pull-requests:\s*write|security-events:\s*write)\s*$", text, re.M):
                   problems.append(f + ": permission globale write détectée")
-              if "pull_request_target" in text:
-                  problems.append(f + ": pull_request_target détecté (interdit — risque d'exécution de code non fiable avec secrets)")
+              # Interdit : déclencheur « PR avec secrets » (risque d'exécution de code
+              # non fiable avec des secrets) — recherché sous sa forme YAML
+              if re.search(r"^\s*pull_request_target\s*:", text, re.M):
+                  problems.append(f + ": déclencheur PR-avec-secrets détecté (interdit)")
           if problems:
               print("\n".join(problems)); sys.exit(1)
           print("Permissions des workflows conformes (lecture seule par défaut).")

@@ -27,9 +27,13 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "npx serve out -l 127.0.0.1:3100",
+    command: "node scripts/serve-static.mjs",
     url: "http://127.0.0.1:3100",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    env: {
+      // Évite tout conflit avec un PORT global du sandbox
+      VELORA_TEST_PORT: "3100",
+    },
   },
 });
