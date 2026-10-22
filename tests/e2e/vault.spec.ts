@@ -6,9 +6,10 @@ import { test, expect } from "@playwright/test";
  * Scénarios :
  * 1. Onboarding : création du coffre (phrase secrète).
  * 2. Création d'une candidature.
- * 3. Persistance après rechargement (nécessite déverrouillage).
- * 4. Déverrouillage avec mauvaise phrase → erreur.
- * 5. Verrouillage manuel.
+ * 3. Modification d'une candidature (édition + dates affichées).
+ * 4. Persistance après rechargement (nécessite déverrouillage).
+ * 5. Déverrouillage avec mauvaise phrase → erreur.
+ * 6. Verrouillage manuel → retour à l'écran de connexion.
  */
 
 const PASSPHRASE = "phrase-de-test-e2e-123456";
@@ -177,5 +178,82 @@ test.describe("Velora — coffre-fort et candidatures", () => {
       await page.goto(url);
       await expect(page.getByRole("heading", { name: title })).toBeVisible();
     }
+  });
+
+  test("modification d'une candidature : édition + dates de création/modification", async ({
+    page,
+  }) => {
+    // Crée le coffre
+    await page.goto("/");
+    await page
+      .getByLabel(/Phrase secrète/i)
+      .first()
+      .fill(PASSPHRASE);
+    await page.getByLabel(/Confirmer la phrase/i).fill(PASSPHRASE);
+    await page.getByRole("button", { name: /Créer le coffre/i }).click();
+    await expect(page.getByRole("heading", { name: /Bonjour|Bonne|Bonsoir/i })).toBeVisible({
+      timeout: 15000,
+    });
+
+    // Crée une candidature
+    await page.goto("/candidatures");
+    await page
+      .getByRole("button", { name: /Nouvelle candidature/i })
+      .first()
+      .click();
+    await page.getByLabel(/Entreprise/i).fill("Atelier Nova");
+    await page.getByLabel(/Poste/i).fill("Développeur front-end");
+    await page.getByRole("button", { name: /Enregistrer/i }).click();
+    await expect(page.getByText("Atelier Nova")).toBeVisible();
+
+    // Vérifie que les dates sont affichées (création + modification)
+    await expect(page.getByText(/Créée le \d{2}\/\d{2}\/\d{4} à \d{2}:\d{2}/)).toBeVisible();
+    await expect(page.getByText(/Modifiée le \d{2}\/\d{2}\/\d{4} à \d{2}:\d{2}/)).toBeVisible();
+
+    // Clique sur "Modifier"
+    await page.getByRole("button", { name: /Modifier/i }).click();
+
+    // Vérifie que le formulaire d'édition est pré-rempli
+    await expect(page.getByLabel(/Entreprise/i)).toHaveValue("Atelier Nova");
+    await expect(page.getByLabel(/Poste/i)).toHaveValue("Développeur front-end");
+
+    // Vérifie l'affichage des dates dans le formulaire d'édition
+    await expect(page.getByText(/Créée le/)).toBeVisible();
+    await expect(page.getByText(/Dernière modification le/)).toBeVisible();
+
+    // Modifie le poste et le statut
+    await page.getByLabel(/Poste/i).fill("Développeur full-stack");
+    await page.getByLabel(/Statut/i).selectOption("envoyee");
+
+    // Enregistre
+    await page.getByRole("button", { name: /Enregistrer les modifications/i }).click();
+
+    // Vérifie que la modification est appliquée
+    await expect(page.getByText("Développeur full-stack")).toBeVisible();
+    await expect(page.getByText("Envoyée")).toBeVisible();
+  });
+
+  test("verrouillage manuel retourne à l'écran de connexion", async ({ page }) => {
+    // Crée le coffre
+    await page.goto("/");
+    await page
+      .getByLabel(/Phrase secrète/i)
+      .first()
+      .fill(PASSPHRASE);
+    await page.getByLabel(/Confirmer la phrase/i).fill(PASSPHRASE);
+    await page.getByRole("button", { name: /Créer le coffre/i }).click();
+    await expect(page.getByRole("heading", { name: /Bonjour|Bonne|Bonsoir/i })).toBeVisible({
+      timeout: 15000,
+    });
+
+    // Vérifie que le badge indique "Coffre déverrouillé"
+    await expect(page.getByText("Coffre déverrouillé")).toBeVisible();
+
+    // Clique sur le bouton "Verrouiller"
+    await page.getByRole("button", { name: /Verrouiller/i }).click();
+
+    // Vérifie qu'on revient à l'écran de déverrouillage
+    await expect(page.getByRole("heading", { name: /Déverrouiller le coffre/i })).toBeVisible();
+    await expect(page.getByLabel(/Phrase secrète/i)).toBeVisible();
   });
 });
