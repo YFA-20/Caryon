@@ -1,0 +1,74 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Permissions minimales : le déploiement sur Cloudflare Pages utilise OIDC
+# (pas de secret long terme stocké dans GitHub). Aucun accès écrit au dépôt.
+permissions:
+  contents: read
+  id-token: write # requis pour l'authentification OIDC Cloudflare
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Déploiement Cloudflare Pages
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: https://caryon.pages.dev
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install (reproductible)
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tests unitaires
+        run: npm run test
+
+      - name: Build (export statique + CSP hashée)
+        run: npm run build
+
+      - name: Vérifier la CSP (hashes présents)
+        run: |
+          if ! grep -q "sha256-" out/_headers; then
+            echo "::error::La CSP ne contient aucun hash SHA-256 — les scripts inline Next.js seraient bloqués."
+            exit 1
+          fi
+          echo "CSP validée : $(grep -o "sha256-[^']*" out/_headers | wc -l) hash(es) présent(s)."
+
+      - name: Vérifier les fichiers critiques
+        run: |
+          for f in out/index.html out/sw.js out/manifest.webmanifest out/_headers; do
+            if [ ! -f "$f" ]; then
+              echo "::error::Fichier manquant: $f"
+              exit 1
+            fi
+          done
+          echo "Tous les fichiers critiques sont présents."
+
+      - name: Déployer sur Cloudflare Pages
+        uses: cloudflare/wrangler-action@39c2b5a1226e5718f92a2749a8988cce31e78a76 # v3.10.0
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy out --project-name=caryon --branch=main
