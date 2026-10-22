@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Briefcase, Pencil, Plus } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Briefcase, KanbanSquare, List, Pencil, Plus, Search } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { KanbanBoard } from "@/components/applications/kanban-board";
 import {
   listApplications,
   createApplication,
@@ -18,6 +19,7 @@ import {
   type Application,
   type ApplicationStatus,
 } from "@/lib/schema/application";
+import { cn } from "@/lib/utils/cn";
 
 const STATUS_COLORS: Record<ApplicationStatus, string> = {
   brouillon: "bg-secondary/15 text-secondary border-secondary/25",
@@ -30,6 +32,8 @@ const STATUS_COLORS: Record<ApplicationStatus, string> = {
   refusee: "bg-danger/15 text-danger border-danger/25",
   abandonnee: "bg-secondary/15 text-secondary border-secondary/25",
 };
+
+type ViewMode = "list" | "kanban";
 
 function formatDateTime(iso: string): string {
   if (!iso) return "—";
@@ -48,6 +52,9 @@ export default function CandidaturesPage() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Application | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [view, setView] = useState<ViewMode>("kanban");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<ApplicationStatus | "all">("all");
 
   async function refresh() {
     setLoading(true);
@@ -73,9 +80,33 @@ export default function CandidaturesPage() {
     await refresh();
   }
 
+  // Filtrage combiné : recherche texte + statut
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return applications.filter((app) => {
+      if (statusFilter !== "all" && app.status !== statusFilter) return false;
+      if (!q) return true;
+      const haystack = [
+        app.company,
+        app.position,
+        app.location,
+        app.source,
+        app.contactName,
+        app.contactEmail,
+        app.notes,
+        app.salary,
+        ...app.tags,
+      ]
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [applications, search, statusFilter]);
+
   return (
     <AppShell>
-      <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
+      <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-8">
+        {/* En-tête */}
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="text-gradient font-serif text-4xl font-bold">Mes candidatures</h1>
@@ -95,6 +126,68 @@ export default function CandidaturesPage() {
           </Button>
         </div>
 
+        {/* Barre d'outils : recherche + filtres + sélecteur de vue */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative min-w-0 flex-1 sm:max-w-sm">
+            <Search
+              className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary/60"
+              aria-hidden="true"
+            />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Rechercher (entreprise, poste, lieu, contact…)"
+              className="w-full rounded-xl border border-subtle bg-surface py-2.5 pl-9 pr-4 text-sm text-primary placeholder:text-secondary/50 focus:border-lavender focus:outline-none focus:ring-2 focus:ring-lavender/20"
+              aria-label="Rechercher une candidature"
+            />
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as ApplicationStatus | "all")}
+            className="rounded-xl border border-subtle bg-surface px-3 py-2.5 text-sm text-primary focus:border-lavender focus:outline-none focus:ring-2 focus:ring-lavender/20"
+            aria-label="Filtrer par statut"
+          >
+            <option value="all">Tous les statuts</option>
+            {Object.entries(APPLICATION_STATUS_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <div className="ml-auto inline-flex rounded-xl border border-subtle bg-surface p-1">
+            <button
+              type="button"
+              onClick={() => setView("kanban")}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors",
+                view === "kanban"
+                  ? "bg-card-elevated text-primary shadow-glow"
+                  : "text-secondary hover:text-primary"
+              )}
+              aria-pressed={view === "kanban"}
+            >
+              <KanbanSquare className="h-4 w-4" aria-hidden="true" />
+              Kanban
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("list")}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors",
+                view === "list"
+                  ? "bg-card-elevated text-primary shadow-glow"
+                  : "text-secondary hover:text-primary"
+              )}
+              aria-pressed={view === "list"}
+            >
+              <List className="h-4 w-4" aria-hidden="true" />
+              Liste
+            </button>
+          </div>
+        </div>
+
+        {/* Formulaire création */}
         {showCreate && (
           <ApplicationForm
             mode="create"
@@ -106,6 +199,7 @@ export default function CandidaturesPage() {
           />
         )}
 
+        {/* Formulaire édition */}
         {editing && (
           <ApplicationForm
             mode="edit"
@@ -118,6 +212,7 @@ export default function CandidaturesPage() {
           />
         )}
 
+        {/* Contenu */}
         {loading ? (
           <div className="flex justify-center py-14">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-lavender border-t-transparent" />
@@ -143,9 +238,36 @@ export default function CandidaturesPage() {
               Créer ma première candidature
             </Button>
           </Card>
+        ) : filtered.length === 0 ? (
+          <Card className="flex flex-col items-center px-6 py-14 text-center">
+            <CardTitle className="font-serif text-xl">Aucun résultat</CardTitle>
+            <CardDescription className="mt-2">
+              Aucune candidature ne correspond à votre recherche.
+            </CardDescription>
+            <Button
+              className="mt-4"
+              variant="ghost"
+              onClick={() => {
+                setSearch("");
+                setStatusFilter("all");
+              }}
+            >
+              Réinitialiser les filtres
+            </Button>
+          </Card>
+        ) : view === "kanban" ? (
+          <KanbanBoard
+            applications={filtered}
+            onEdit={(app) => {
+              setShowCreate(false);
+              setEditing(app);
+            }}
+            onDelete={setDeletingId}
+            onRefresh={refresh}
+          />
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
-            {applications.map((app) => (
+            {filtered.map((app) => (
               <Card key={app.id} className="p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
