@@ -82,25 +82,28 @@ Définis dans `next.config.ts` (`headers()`) et **dupliqués dans `out/_headers`
 - `manifest.webmanifest` et `sw.js` : `Cache-Control: no-cache` (mise à jour fiable de la PWA).
 - Le service worker gère lui-même le cache runtime (offline-first, network-first pour le HTML).
 
-## Déploiement automatique (GitHub Actions)
+## Option A — Déploiement via intégration native Cloudflare Pages (recommandé)
 
-Deux workflows :
+**Avantage** : aucune configuration de secrets, déploiement automatique natif.
 
-### `deploy.yml` — Production
+1. [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages** → **Create application** → **Pages** → **Connect to Git**.
+2. Sélectionne `YFA-20/Caryon`.
+3. Configure (voir tableau ci-dessus).
+4. **Save and Deploy**.
 
-- **Déclencheur** : push sur `main` + `workflow_dispatch` (manuel).
-- **Vérifications** : typecheck, lint, tests unitaires, build, validation CSP.
-- **Déploiement** : `wrangler pages deploy out --project-name=caryon --branch=main`.
-- **Environnement** : `production` (URL : `https://caryon.pages.dev`).
+Cloudflare Pages déploie automatiquement :
 
-### `deploy-preview.yml` — Preview (PR)
+- Chaque push sur `main` → **production** (`https://caryon.pages.dev`)
+- Chaque branche/PR → **preview** (`https://<hash>.caryon.pages.dev`)
 
-- **Déclencheur** : ouverture/synchronisation de PR.
-- **Vérifications** : identiques à la production.
-- **Déploiement** : `wrangler pages deploy out --project-name=caryon --branch=pr-<numéro>`.
-- **Commentaire** : poste l'URL de preview sur la PR.
+> ℹ️ Les workflows `deploy.yml` / `deploy-preview.yml` détectent l'absence de secrets
+> et se désactivent gracieusement (avec un commentaire informatif sur les PR).
 
-### Secrets requis (GitHub → Settings → Secrets)
+## Option B — Déploiement via GitHub Actions (avec secrets)
+
+Si tu préfères contrôler le déploiement depuis GitHub Actions :
+
+### Secrets requis (GitHub → Settings → Secrets and variables → Actions)
 
 | Secret                  | Description                                                         |
 | ----------------------- | ------------------------------------------------------------------- |
@@ -110,17 +113,21 @@ Deux workflows :
 > **Préféré** : OIDC (Cloudflare Workers/Pages) — jetons éphémères, aucun secret long terme.
 > Le workflow actuel utilise un API token à permissions minimales en attendant.
 
-## Déploiement manuel (Cloudflare Dashboard)
+### Workflows
 
-Si tu préfères ne pas utiliser GitHub Actions :
+- **`deploy.yml`** — Production
+  - **Déclencheur** : push sur `main` + `workflow_dispatch` (manuel).
+  - **Vérifications** : typecheck, lint, tests unitaires, build, validation CSP.
+  - **Déploiement** : `wrangler pages deploy out --project-name=caryon --branch=main`.
+  - **Environnement** : `production` (URL : `https://caryon.pages.dev`).
+  - **continue-on-error** : si les secrets ne sont pas configurés, le job passe en warning.
 
-1. [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages** → **Create application** → **Pages** → **Connect to Git**.
-2. Sélectionne `YFA-20/Caryon`.
-3. Configure (voir tableau ci-dessus).
-4. **Save and Deploy**.
-
-Cloudflare Pages déploie automatiquement chaque push sur `main` (production) et
-chaque branche/PR (preview `*.pages.dev`).
+- **`deploy-preview.yml`** — Preview (PR)
+  - **Déclencheur** : ouverture/synchronisation de PR.
+  - **Vérifications** : identiques à la production.
+  - **Déploiement** : `wrangler pages deploy out --project-name=caryon --branch=pr-<numéro>`.
+  - **Commentaire** : poste l'URL de preview sur la PR (ou un message informatif si les secrets manquent).
+  - **continue-on-error** : si les secrets ne sont pas configurés, le job passe en warning.
 
 ## Rollback
 
@@ -174,3 +181,15 @@ Si tu déploies manuellement, assure-toi de builder avec `npm run build` (qui in
 de sortie est mal configuré.
 
 **Solution** : utiliser **Pages** (pas Workers), dossier de sortie `out`.
+
+### CI rouge — "Deploy Preview" ou "CodeQL" en échec
+
+Ces deux checks sont **non-bloquants** (`continue-on-error: true`) :
+
+| Check              | Raison                                                               | Action                                                                                                    |
+| ------------------ | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| **Deploy Preview** | Secrets Cloudflare non configurés                                    | Ajoute `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`, ou utilise l'intégration native Cloudflare Pages |
+| **CodeQL**         | GitHub Advanced Security indisponible (compte gratuit + dépôt privé) | Active Advanced Security, ou passe à un compte payant / dépôt public / GitHub Education                   |
+
+> ⚠️ Ces checks apparaissent en rouge dans la liste mais **ne bloquent pas le merge**
+> (ils sont marqués comme "optional" grâce à `continue-on-error`).

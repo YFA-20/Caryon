@@ -21,6 +21,9 @@ jobs:
     name: Preview Cloudflare Pages
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Non-bloquant tant que les secrets Cloudflare ne sont pas configurés.
+    # Voir docs/DEPLOYMENT.md pour la configuration.
+    continue-on-error: true
     environment:
       name: preview
       url: https://${{ steps.deploy.outputs.deployment-url }}
@@ -55,9 +58,23 @@ jobs:
             echo "::error::La CSP ne contient aucun hash SHA-256."
             exit 1
           fi
+          echo "CSP validée : $(grep -o "sha256-[^']*" out/_headers | wc -l) hash(es) présent(s)."
+
+      - name: Vérifier la configuration Cloudflare
+        id: check-secrets
+        run: |
+          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ] || [ -z "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Secrets Cloudflare non configurés (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID)."
+            echo "::warning::Le déploiement preview est ignoré. Voir docs/DEPLOYMENT.md pour la configuration."
+            echo "::warning::Alternative : connecter Cloudflare Pages directement au dépôt GitHub (intégration native, sans secrets)."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Déployer preview sur Cloudflare Pages
         id: deploy
+        if: steps.check-secrets.outputs.configured == 'true'
         uses: cloudflare/wrangler-action@39c2b5a1226e5718f92a2749a8988cce31e78a76 # v3.10.0
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -65,11 +82,25 @@ jobs:
           command: pages deploy out --project-name=caryon --branch=pr-${{ github.event.pull_request.number }}
 
       - name: Commenter l'URL de preview sur la PR
+        if: steps.check-secrets.outputs.configured == 'true' && steps.deploy.outputs.deployment-url != ''
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
         with:
           script: |
             const url = '${{ steps.deploy.outputs.deployment-url }}';
             const body = `🚀 **Preview déployée**\n\n${url}\n\n> ⚠️ Données fictives uniquement — l'app est local-first, aucune donnée réelle n'y transite.`;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+      - name: Commenter l'absence de secrets (informatif)
+        if: steps.check-secrets.outputs.configured == 'false'
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
+        with:
+          script: |
+            const body = `ℹ️ **Preview non déployée**\n\nLes secrets Cloudflare ne sont pas configurés dans ce dépôt.\n\n**Pour activer les previews automatiques**, ajoute dans *Settings → Secrets and variables → Actions* :\n- \`CLOUDFLARE_API_TOKEN\` (permission Cloudflare Pages:Edit)\n- \`CLOUDFLARE_ACCOUNT_ID\`\n\n**Alternative sans secrets** : connecte Cloudflare Pages directement au dépôt GitHub (intégration native).\n\nVoir [docs/DEPLOYMENT.md](https://github.com/${{ github.repository }}/blob/${{ github.ref }}/docs/DEPLOYMENT.md) pour le guide complet.`;
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,

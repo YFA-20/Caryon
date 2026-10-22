@@ -20,6 +20,10 @@ jobs:
     name: Déploiement Cloudflare Pages
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Non-bloquant tant que les secrets Cloudflare ne sont pas configurés.
+    # Le déploiement production peut aussi se faire via l'intégration native
+    # Cloudflare Pages ↔ GitHub (sans secrets dans GitHub Actions).
+    continue-on-error: true
     environment:
       name: production
       url: https://caryon.pages.dev
@@ -66,7 +70,20 @@ jobs:
           done
           echo "Tous les fichiers critiques sont présents."
 
+      - name: Vérifier la configuration Cloudflare
+        id: check-secrets
+        run: |
+          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ] || [ -z "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Secrets Cloudflare non configurés (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID)."
+            echo "::warning::Le déploiement est ignoré. Voir docs/DEPLOYMENT.md pour la configuration."
+            echo "::warning::Alternative : connecter Cloudflare Pages directement au dépôt GitHub (intégration native, sans secrets)."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Déployer sur Cloudflare Pages
+        if: steps.check-secrets.outputs.configured == 'true'
         uses: cloudflare/wrangler-action@39c2b5a1226e5718f92a2749a8988cce31e78a76 # v3.10.0
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
