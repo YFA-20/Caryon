@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🔒 Signaler une vulnérabilité (privé)
+    url: https://github.com/YFA-20/Caryon/security/advisories/new
+    about: Utilisez ce lien pour toute vulnérabilité — ne créez pas d'issue publique.
+  - name: 💬 Question / discussion
+    url: https://github.com/YFA-20/Caryon/discussions/new
+    about: Posez vos questions sur l'utilisation ou l'architecture de Velora.

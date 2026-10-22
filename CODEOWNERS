@@ -1,0 +1,30 @@
+# Velora — propriétaires de code
+# Toute Pull Request modifiant ces chemins requiert la revue des propriétaires désignés.
+
+# Racine du projet (gouvernance)
+/README.md @YFA-20
+/SECURITY.md @YFA-20
+/CONTRIBUTING.md @YFA-20
+/CHANGELOG.md @YFA-20
+/CODEOWNERS @YFA-20
+
+# Cryptographie et coffre-fort (CHANGEMENT SENSIBLE — revue humaine obligatoire)
+/src/lib/crypto/ @YFA-20
+/src/lib/vault/ @YFA-20
+/src/lib/backup/ @YFA-20
+
+# Synchronisation (CHANGEMENT SENSIBLE)
+/src/lib/sync/ @YFA-20
+
+# Politique de sécurité de l'application
+/next.config.ts @YFA-20
+/public/manifest.webmanifest @YFA-20
+/public/sw.js @YFA-20
+
+# CI/CD et supply chain
+/.github/ @YFA-20
+/package.json @YFA-20
+/package-lock.json @YFA-20
+
+# Schémas de données (contrats de persistance)
+/src/lib/schema/ @YFA-20

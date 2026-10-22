@@ -1,0 +1,57 @@
+name: ✨ Fonctionnalité
+title: "feat: "
+labels: ["type:feature", "enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Merci de décrire la fonctionnalité souhaitée. Pour toute proposition touchant la
+        cryptographie, les clés, l'authentification, la synchronisation, la CSP ou les données
+        personnelles, mentionnez-le explicitement (revue sécurité requise).
+  - type: textarea
+    id: besoin
+    attributes:
+      label: Besoin utilisateur
+      description: Quel problème cette fonctionnalité résout-elle ? Pour qui ?
+      placeholder: "En tant qu'utilisateur, je veux … afin de …"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description de la solution proposée
+      description: Comportement attendu, maquettes si disponibles, hors périmètre.
+    validations:
+      required: true
+  - type: textarea
+    id: criteres
+    attributes:
+      label: Critères d'acceptation vérifiables
+      description: Liste de conditions mesurables prouvant que la fonctionnalité est terminée.
+      placeholder: |
+        - [ ] Une candidature créée reste accessible hors ligne après rechargement
+        - [ ] Les données sensibles ne sont pas lisibles en clair dans IndexedDB
+        - [ ] Tests unitaires + E2E ajoutés et passants
+    validations:
+      required: true
+  - type: textarea
+    id: securite
+    attributes:
+      label: Impact sécurité / confidentialité
+      description: Cette fonctionnalité touche-t-elle la crypto, les clés, l'auth, la sync, la CSP, les exports ou la suppression de données ?
+    validations:
+      required: true
+  - type: dropdown
+    id: milestone
+    attributes:
+      label: Jalon (Milestone)
+      options:
+        - v0.1.0 — MVP local-first
+        - v0.2.0 — Gestion documentaire
+        - v0.3.0 — Calendrier et analyses
+        - v0.4.0 — IA facultative
+        - v0.5.0 — Synchronisation chiffrée
+        - v1.0.0 — Version stable
+        - Aucun
+    validations:
+      required: true

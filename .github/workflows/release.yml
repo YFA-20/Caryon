@@ -1,0 +1,143 @@
+name: Release
+
+# Déclenché UNIQUEMENT manuellement (workflow_dispatch) avec une version SemVer
+# explicite. Ne publie jamais automatiquement depuis une PR.
+# La protection de branche main + les contrôles obligatoires s'appliquent en amont.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version SemVer à publier (ex: 0.1.0) — doit correspondre à package.json"
+        required: true
+        type: string
+
+permissions:
+  contents: write # création du tag + release (justifié, limité à ce workflow)
+
+jobs:
+  verify:
+    name: Vérifications (bloquantes)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install (reproductible)
+        run: npm ci
+
+      - name: Vérifier la cohérence de version (SemVer + package.json)
+        id: check
+        run: |
+          VERSION="${{ inputs.version }}"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Version '$VERSION' invalide (SemVer requis, ex: 0.1.0)"; exit 1
+          fi
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if [ "$PKG_VERSION" != "$VERSION" ]; then
+            echo "::error::package.json ($PKG_VERSION) != version demandée ($VERSION)"; exit 1
+          fi
+          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+            echo "::error::Le tag v$VERSION existe déjà"; exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint & Format
+        run: npm run lint && npm run format:check
+
+      - name: Tests unitaires
+        run: npm run test
+
+      - name: Build production
+        run: npm run build
+
+      - name: Audit (bloquant >= high)
+        run: npm audit --audit-level=high --omit=dev
+
+  release:
+    name: Tag + GitHub Release
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Créer le tag annoté
+        run: |
+          VERSION="${{ needs.verify.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "v$VERSION" -m "Release v$VERSION"
+          git push origin "v$VERSION"
+
+      - name: Générer les notes de version
+        id: notes
+        run: |
+          VERSION="${{ needs.verify.outputs.version }}"
+          if [ -f CHANGELOG.md ]; then
+            awk -v v="$VERSION" '
+              $0 == "## ["v"]" {found=1; print; next}
+              /^## \[/ && found {exit}
+              found {print}
+            ' CHANGELOG.md > /tmp/notes.md || true
+          fi
+          if [ ! -s /tmp/notes.md ]; then
+            echo "## Release v$VERSION" > /tmp/notes.md
+            echo "" >> /tmp/notes.md
+            echo "Commit livré : $(git rev-parse HEAD)" >> /tmp/notes.md
+          fi
+          echo "notes-file=/tmp/notes.md" >> "$GITHUB_OUTPUT"
+
+      - name: Créer la GitHub Release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          tag_name: v${{ needs.verify.outputs.version }}
+          name: Velora v${{ needs.verify.outputs.version }}
+          body_path: ${{ steps.notes.outputs.notes-file }}
+          draft: false
+          prerelease: false
+
+  deploy:
+    name: Déploiement Cloudflare (manuel, contrôlé)
+    needs: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install (reproductible)
+        run: npm ci
+
+      - name: Build production
+        run: npm run build
+
+      - name: Déployer sur Cloudflare Pages (production)
+        # Credentials via secrets GitHub (jamais dans le code) :
+        # CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_API_TOKEN (permissions Pages minimales)
+        # ou OIDC (préféré) via cloudflare/wrangler-action.
+        run: |
+          echo "Déploiement production déclenché pour la release ${{ needs.verify.outputs.version }}."
+          echo "Utilisez Cloudflare Pages (projet lié au dépôt) ou wrangler avec OIDC."
+          echo "Voir docs/DEPLOYMENT.md — rollback documenté."

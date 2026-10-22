@@ -1,0 +1,52 @@
+# Velora — Dependabot (supply chain)
+# Mises à jour groupées et limitées ; les dépendances critiques ne sont jamais
+# fusionnées automatiquement en production sans tests (voir CONTRIBUTING.md §Supply chain).
+version: 2
+registries:
+  npm:
+    type: npm-registry
+    url: https://registry.npmjs.org/
+
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 5
+    groups:
+      # Regroupe les mises à jour patch/mineures non critiques
+      all-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+      # Les mises à jour majeures restent des PR individuelles (revue attentive)
+    reviewers:
+      - "YFA-20"
+    labels:
+      - "chore"
+      - "dependencies"
+    commit-message:
+      prefix: "chore(deps)"
+      include: scope
+    # Les PR de sécurité sont prioritaires et hors groupe
+    allow:
+      - dependency-type: direct
+      - dependency-type: indirect
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:30"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "YFA-20"
+    labels:
+      - "chore"
+      - "ci"
+    commit-message:
+      prefix: "chore(ci)"

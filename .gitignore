@@ -1,0 +1,50 @@
+# Dépendances
+node_modules/
+.pnp
+.pnp.js
+
+# Build Next.js
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+
+# Environnement (JAMAIS de secrets commités)
+.env
+.env.local
+.env*.local
+.env.development
+.env.production
+.env.test
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Tests
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+blob-report/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Divers
+.vercel
+.wrangler/
+.dev.vars
+wrangler.toml.local
+.turbo/
+.cache/

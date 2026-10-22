@@ -1,0 +1,121 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Audit quotidien de 06:00 UTC
+    - cron: "0 6 * * *"
+
+permissions:
+  contents: read
+  # Requis par CodeQL pour publier les résultats (upload-sarif).
+  # Sur les PR de fork, le secret n'est pas exposé : l'upload échoue gracieusement.
+  security-events: write
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gitleaks:
+    name: Détection de secrets (Gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout (historique complet)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+
+  codeql:
+    name: Analyse statique (CodeQL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install (reproductible)
+        run: npm ci
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action@4bfa242aa49c5f7c6770b98670d354a7dfac05f8 # v3
+        with:
+          languages: javascript-typescript
+          queries: security-extended,security-and-quality
+
+      - name: Build (pour l'analyse des flux)
+        run: npm run build
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action@4bfa242aa49c5f7c6770b98670d354a7dfac05f8 # v3
+        with:
+          category: "/language:javascript-typescript"
+
+  dependency-audit:
+    name: Audit des dépendances
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install (reproductible)
+        run: npm ci
+
+      - name: npm audit (bloquant >= moderate)
+        run: npm run security:audit
+
+      - name: Vérification du lockfile
+        run: |
+          if ! git diff --quiet HEAD -- package-lock.json 2>/dev/null; then
+            echo "::warning::package-lock.json modifié dans cette PR — revue supply chain requise"
+          fi
+          npm ls --all --omit=dev >/dev/null 2>&1 || npm ls --omit=dev
+
+  workflow-permissions:
+    name: Audit des permissions des workflows
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Lister les permissions déclarées par job
+        run: |
+          python3 - <<'EOF'
+          import glob, sys, re
+          problems = []
+          for f in glob.glob(".github/workflows/*.yml"):
+              text = open(f).read()
+              # Interdit : permissions globales trop larges
+              if re.search(r"^permissions:\s*\n\s*(contents:\s*write|pull-requests:\s*write|security-events:\s*write)\s*$", text, re.M):
+                  problems.append(f + ": permission globale write détectée")
+              if "pull_request_target" in text:
+                  problems.append(f + ": pull_request_target détecté (interdit — risque d'exécution de code non fiable avec secrets)")
+          if problems:
+              print("\n".join(problems)); sys.exit(1)
+          print("Permissions des workflows conformes (lecture seule par défaut).")
+          EOF

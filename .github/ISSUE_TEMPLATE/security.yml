@@ -1,0 +1,38 @@
+name: 🔒 Vulnérabilité / amélioration sécurité
+title: "security: "
+labels: ["type:security", "security"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ⚠️ **Ne décrivez pas publiquement une vulnérabilité exploitable.**
+        Pour une vulnérabilité, utilisez plutôt une
+        [Security Advisory privée](https://github.com/YFA-20/Caryon/security/advisories/new).
+        Ce formulaire convient pour une amélioration de sécurité planifiée.
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Quel risque est adressé ? Quelle mesure est proposée ?
+    validations:
+      required: true
+  - type: textarea
+    id: surface
+    attributes:
+      label: Surface concernée
+      placeholder: "Crypto, gestion des clés, auth, sync, CSP, exports, suppressions, dépendances, CI/CD…"
+    validations:
+      required: true
+  - type: textarea
+    id: mitigation
+    attributes:
+      label: Mitigation proposée
+    validations:
+      required: true
+  - type: textarea
+    id: tests
+    attributes:
+      label: Tests de vérification prévus
+      description: Comment prouvera-t-on que la mesure est effective ?
+    validations:
+      required: true

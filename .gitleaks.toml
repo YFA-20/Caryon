@@ -1,0 +1,28 @@
+# Velora — configuration Gitleaks
+# Détection de secrets dans l'historique et les fichiers suivis.
+
+title = "Velora — règles Gitleaks"
+
+[extend]
+# Règles par défaut de Gitleaks (API keys génériques, tokens, clés privées, etc.)
+useDefault = true
+
+[[rules]]
+id = "velora-no-fake-secrets-in-tests"
+description = "Interdit les marqueurs de secrets réels même dans les tests (évite les faux positifs structurels)"
+regex = '''(?i)(api[_-]?key|secret|password|passphrase)\s*[:=]\s*["'][A-Za-z0-9+/]{32,}["']'''
+path = '''(?i)(test|spec|e2e)'''
+allowlistRegexes = [
+  '''(?i)(example|placeholder|dummy|fake|test[-_]?only|xxxx|0000|aaaa)''',
+]
+
+[allowlist]
+description = "Faux positifs autorisés de Velora"
+paths = [
+  '''.env.example''',
+  '''docs/''',
+  '''CHANGELOG.md''',
+]
+regexes = [
+  '''(?i)(phrase secrète|api[_-]?key)\s+(exemple|ex:|<|votre)''',
+]
