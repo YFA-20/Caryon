@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Briefcase, KanbanSquare, List, Pencil, Plus, Search } from "lucide-react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Briefcase, KanbanSquare, List, Pencil, Plus, Search, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { KanbanBoard } from "@/components/applications/kanban-board";
+import { applicationTypeSchema } from "@/lib/schema/application";
 import {
   listApplications,
   createApplication,
@@ -47,7 +49,24 @@ function formatDateTime(iso: string): string {
   });
 }
 
-export default function CandidaturesPage() {
+function readPrefillFromUrl(searchParams: URLSearchParams) {
+  const typeRaw = searchParams.get("type") ?? "";
+  const typeParsed = applicationTypeSchema.safeParse(typeRaw);
+  return {
+    company: searchParams.get("company") ?? undefined,
+    position: searchParams.get("position") ?? undefined,
+    type: typeParsed.success ? typeParsed.data : undefined,
+    location: searchParams.get("location") ?? undefined,
+    remote: searchParams.get("remote") === "1" ? true : undefined,
+    salary: searchParams.get("salary") ?? undefined,
+    source: searchParams.get("source") ?? undefined,
+    offerUrl: searchParams.get("offerUrl") ?? undefined,
+    notes: searchParams.get("notes") ?? undefined,
+  };
+}
+
+function CandidaturesPageInner() {
+  const searchParams = useSearchParams();
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Application | null>(null);
@@ -55,6 +74,21 @@ export default function CandidaturesPage() {
   const [view, setView] = useState<ViewMode>("kanban");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | "all">("all");
+  const [prefillNotice, setPrefillNotice] = useState(false);
+
+  // Pré-remplissage depuis la page /offres (query params)
+  const prefill = useMemo(() => {
+    const data = readPrefillFromUrl(searchParams);
+    return Object.values(data).some((v) => v !== undefined && v !== "") ? data : null;
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (prefill) {
+      setEditing(null);
+      setShowCreate(true);
+      setPrefillNotice(true);
+    }
+  }, [prefill]);
 
   async function refresh() {
     setLoading(true);
@@ -115,6 +149,12 @@ export default function CandidaturesPage() {
               {applications.length > 1 ? "s" : ""}
             </p>
           </div>
+          {prefillNotice && prefill && (
+            <Badge variant="lavender">
+              <Sparkles className="mr-1 h-3 w-3" aria-hidden />
+              Pré-rempli depuis une offre — vérifiez les champs
+            </Badge>
+          )}
           <Button
             onClick={() => {
               setEditing(null);
@@ -191,6 +231,7 @@ export default function CandidaturesPage() {
         {showCreate && (
           <ApplicationForm
             mode="create"
+            prefill={prefill ?? undefined}
             onClose={() => setShowCreate(false)}
             onSaved={() => {
               setShowCreate(false);
@@ -346,14 +387,41 @@ export default function CandidaturesPage() {
   );
 }
 
+export default function CandidaturesPage() {
+  return (
+    <Suspense
+      fallback={
+        <AppShell>
+          <div className="flex justify-center p-14">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-lavender border-t-transparent" />
+          </div>
+        </AppShell>
+      }
+    >
+      <CandidaturesPageInner />
+    </Suspense>
+  );
+}
+
 interface ApplicationFormProps {
   mode: "create" | "edit";
   application?: Application;
+  prefill?: {
+    company?: string;
+    position?: string;
+    type?: Application["type"];
+    location?: string;
+    remote?: boolean;
+    salary?: string;
+    source?: string;
+    offerUrl?: string;
+    notes?: string;
+  };
   onClose: () => void;
   onSaved: () => void;
 }
 
-function ApplicationForm({ mode, application, onClose, onSaved }: ApplicationFormProps) {
+function ApplicationForm({ mode, application, prefill, onClose, onSaved }: ApplicationFormProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isEdit = mode === "edit" && application;
@@ -423,7 +491,7 @@ function ApplicationForm({ mode, application, onClose, onSaved }: ApplicationFor
               required
               className={inputClass}
               placeholder="Ex: Atelier Nova"
-              defaultValue={application?.company ?? ""}
+              defaultValue={application?.company ?? prefill?.company ?? ""}
             />
           </div>
           <div>
@@ -436,7 +504,7 @@ function ApplicationForm({ mode, application, onClose, onSaved }: ApplicationFor
               required
               className={inputClass}
               placeholder="Ex: Développeur front-end"
-              defaultValue={application?.position ?? ""}
+              defaultValue={application?.position ?? prefill?.position ?? ""}
             />
           </div>
           <div>
@@ -447,7 +515,7 @@ function ApplicationForm({ mode, application, onClose, onSaved }: ApplicationFor
               id="type"
               name="type"
               className={inputClass}
-              defaultValue={application?.type ?? "cdi"}
+              defaultValue={application?.type ?? prefill?.type ?? "cdi"}
             >
               <option value="stage">Stage</option>
               <option value="alternance">Alternance</option>
@@ -482,7 +550,7 @@ function ApplicationForm({ mode, application, onClose, onSaved }: ApplicationFor
               name="location"
               className={inputClass}
               placeholder="Ex: Paris, hybride"
-              defaultValue={application?.location ?? ""}
+              defaultValue={application?.location ?? prefill?.location ?? ""}
             />
           </div>
           <div>
@@ -494,7 +562,7 @@ function ApplicationForm({ mode, application, onClose, onSaved }: ApplicationFor
               name="salary"
               className={inputClass}
               placeholder="Ex: 45-55k€"
-              defaultValue={application?.salary ?? ""}
+              defaultValue={application?.salary ?? prefill?.salary ?? ""}
             />
           </div>
           <div>
@@ -507,7 +575,7 @@ function ApplicationForm({ mode, application, onClose, onSaved }: ApplicationFor
               type="url"
               className={inputClass}
               placeholder="https://..."
-              defaultValue={application?.offerUrl ?? ""}
+              defaultValue={application?.offerUrl ?? prefill?.offerUrl ?? ""}
             />
           </div>
           <div>
@@ -519,7 +587,7 @@ function ApplicationForm({ mode, application, onClose, onSaved }: ApplicationFor
               name="source"
               className={inputClass}
               placeholder="Ex: LinkedIn, Indeed…"
-              defaultValue={application?.source ?? ""}
+              defaultValue={application?.source ?? prefill?.source ?? ""}
             />
           </div>
           <div>
@@ -582,7 +650,7 @@ function ApplicationForm({ mode, application, onClose, onSaved }: ApplicationFor
             rows={3}
             className={inputClass}
             placeholder="Informations utiles, ressenti, prochaines étapes..."
-            defaultValue={application?.notes ?? ""}
+            defaultValue={application?.notes ?? prefill?.notes ?? ""}
           />
         </div>
         <label className="flex items-center gap-2 text-sm text-secondary">
@@ -590,7 +658,7 @@ function ApplicationForm({ mode, application, onClose, onSaved }: ApplicationFor
             type="checkbox"
             name="remote"
             className="rounded border-subtle accent-lavender"
-            defaultChecked={application?.remote ?? false}
+            defaultChecked={application?.remote ?? prefill?.remote ?? false}
           />
           Télétravail possible
         </label>

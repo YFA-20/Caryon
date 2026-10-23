@@ -1,15 +1,21 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CalendarDays, CheckCircle2, Clock, Plus, Send } from "lucide-react";
+import Link from "next/link";
 import { useUiStore } from "@/store/ui-store";
 import { computeDemoStats, DEMO_APPLICATIONS, DEMO_FIRST_NAME } from "@/lib/demo/demo-data";
-import { APPLICATION_STATUS_LABELS } from "@/lib/schema/application";
-import type { Application } from "@/lib/schema/application";
+import { listApplications } from "@/lib/vault/application-repository";
+import { listUpcomingEvents } from "@/lib/vault/calendar-repository";
+import { computeStats } from "@/lib/vault/stats-service";
+import { getApplicationsNeedingFollowUp } from "@/lib/vault/followup-service";
+import { APPLICATION_STATUS_LABELS, type Application } from "@/lib/schema/application";
+import type { CalendarEvent } from "@/lib/schema/calendar";
 import { formatDateFr } from "@/lib/utils/date";
 import { AppShell } from "@/components/layout/app-shell";
 import { DemoBanner } from "./demo-banner";
 import { EmptyState } from "./empty-state";
+import { FollowUpSection } from "./follow-up-section";
 import { PipelineChart } from "./pipeline-chart";
 import { StatCard } from "./stat-card";
 import { Badge } from "@/components/ui/badge";
@@ -46,11 +52,44 @@ const DEMO_UPCOMING = [
 export function Dashboard() {
   const { demoMode, firstName } = useUiStore();
 
+  // Données réelles (chiffrées)
+  const [realApps, setRealApps] = useState<Application[]>([]);
+  const [realEvents, setRealEvents] = useState<CalendarEvent[]>([]);
+  const [realLoading, setRealLoading] = useState(true);
+
+  const loadReal = useCallback(async () => {
+    setRealLoading(true);
+    try {
+      const [apps, events] = await Promise.all([listApplications(), listUpcomingEvents(5)]);
+      setRealApps(apps);
+      setRealEvents(events);
+    } catch (err) {
+      console.error("[dashboard] Erreur chargement données réelles:", err);
+    } finally {
+      setRealLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!demoMode) loadReal();
+  }, [demoMode, loadReal]);
+
   const applications: Application[] = useMemo(
-    () => (demoMode ? DEMO_APPLICATIONS : []),
-    [demoMode]
+    () => (demoMode ? DEMO_APPLICATIONS : realApps),
+    [demoMode, realApps]
   );
-  const stats = useMemo(() => computeDemoStats(applications), [applications]);
+
+  const stats = useMemo(() => {
+    if (demoMode) return computeDemoStats(applications);
+    const full = computeStats(applications, realEvents);
+    return {
+      active: full.active,
+      interviewsUpcoming: full.upcomingInterviews,
+      positiveResponses: full.byStatus["offre_recue"] ?? 0,
+      followupsNeeded: getApplicationsNeedingFollowUp(applications).length,
+    };
+  }, [demoMode, applications, realEvents]);
+
   const name = firstName || (demoMode ? DEMO_FIRST_NAME : "");
 
   const greeting = useMemo(() => {
@@ -59,6 +98,8 @@ export function Dashboard() {
     if (hour < 18) return "Bonne après-midi";
     return "Bonsoir";
   }, []);
+
+  const loading = !demoMode && realLoading;
 
   return (
     <AppShell>
@@ -73,18 +114,26 @@ export function Dashboard() {
               {name ? `, ${name}` : ""}.
             </h1>
             <p className="mt-2 text-secondary">
-              {applications.length > 0
-                ? `${stats.active} candidature${stats.active > 1 ? "s" : ""} active${stats.active > 1 ? "s" : ""} · ${stats.interviewsUpcoming} entretien${stats.interviewsUpcoming > 1 ? "s" : ""} à venir`
-                : "Bienvenue dans votre espace privé. Vos données seront chiffrées sur cet appareil."}
+              {loading
+                ? "Chargement de vos données chiffrées…"
+                : applications.length > 0
+                  ? `${stats.active} candidature${stats.active > 1 ? "s" : ""} active${stats.active > 1 ? "s" : ""} · ${stats.interviewsUpcoming} entretien${stats.interviewsUpcoming > 1 ? "s" : ""} à venir`
+                  : "Bienvenue dans votre espace privé. Créez votre première candidature pour commencer."}
             </p>
           </div>
-          <Button size="md" disabled title="Disponible dans la prochaine itération">
-            <Plus className="h-4 w-4" aria-hidden />
-            Une opportunité, une action
-          </Button>
+          <Link href="/candidatures">
+            <Button size="md" disabled={loading}>
+              <Plus className="h-4 w-4" aria-hidden />
+              Une opportunité, une action
+            </Button>
+          </Link>
         </div>
 
-        {applications.length === 0 ? (
+        {loading ? (
+          <Card className="p-10 text-center">
+            <p className="text-secondary">Déchiffrement de vos données…</p>
+          </Card>
+        ) : applications.length === 0 ? (
           <EmptyState />
         ) : (
           <>
@@ -129,6 +178,9 @@ export function Dashboard() {
               </div>
             </CardElevated>
 
+            {/* Relances intelligentes (données réelles uniquement) */}
+            {!demoMode && <FollowUpSection />}
+
             <div className="grid gap-6 lg:grid-cols-2">
               {/* Votre journée */}
               <Card>
@@ -160,6 +212,13 @@ export function Dashboard() {
                         </Badge>
                       </li>
                     ))}
+                  {applications.filter((a) =>
+                    ["entretien", "envoyee", "en_attente"].includes(a.status)
+                  ).length === 0 && (
+                    <li className="rounded-2xl border border-subtle bg-background/40 p-3 text-sm text-secondary">
+                      Aucune candidature active à suivre pour le moment.
+                    </li>
+                  )}
                 </ul>
               </Card>
 
@@ -168,27 +227,48 @@ export function Dashboard() {
                 <CardTitle>À venir</CardTitle>
                 <CardDescription>Vos prochains événements</CardDescription>
                 <ul className="mt-4 space-y-3">
-                  {DEMO_UPCOMING.map((evt) => (
+                  {(demoMode
+                    ? DEMO_UPCOMING.map((e) => ({
+                        id: e.id,
+                        title: e.title,
+                        dateIso: e.date,
+                        kindLabel: e.kind,
+                      }))
+                    : realEvents.map((e) => ({
+                        id: e.id,
+                        title: e.title,
+                        dateIso: e.startAt,
+                        kindLabel: e.allDay ? "Journée entière" : "Événement",
+                      }))
+                  ).map((evt) => (
                     <li
                       key={evt.id}
                       className="flex items-center gap-3 rounded-2xl border border-subtle bg-background/40 p-3"
                     >
                       <div className="flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-xl bg-card-elevated">
                         <span className="text-[10px] uppercase text-secondary">
-                          {new Date(evt.date).toLocaleDateString("fr-FR", { month: "short" })}
+                          {new Date(evt.dateIso).toLocaleDateString("fr-FR", {
+                            month: "short",
+                          })}
                         </span>
                         <span className="font-serif text-lg font-semibold leading-none text-rose">
-                          {new Date(evt.date).getDate()}
+                          {new Date(evt.dateIso).getDate()}
                         </span>
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-primary">{evt.title}</p>
                         <p className="text-xs text-secondary">
-                          {evt.kind} · {formatDateFr(evt.date)}
+                          {evt.kindLabel} · {formatDateFr(evt.dateIso)}
                         </p>
                       </div>
                     </li>
                   ))}
+                  {!demoMode && realEvents.length === 0 && (
+                    <li className="rounded-2xl border border-subtle bg-background/40 p-3 text-sm text-secondary">
+                      Aucun événement à venir. Ajoutez un entretien ou une relance dans le
+                      calendrier.
+                    </li>
+                  )}
                 </ul>
               </Card>
             </div>
