@@ -5,6 +5,7 @@ import { Header } from "./header";
 import { MobileNav } from "./mobile-nav";
 import { Sidebar } from "./sidebar";
 import { PwaRegister } from "@/components/pwa-register";
+import { CommandPalette } from "@/components/common/command-palette";
 import { useAutoLock } from "@/hooks/use-auto-lock";
 import { useNotificationScheduler } from "@/hooks/use-notification-scheduler";
 
@@ -14,6 +15,7 @@ import { useNotificationScheduler } from "@/hooks/use-notification-scheduler";
  * Intègre les hooks transverses actifs quand le coffre est déverrouillé :
  * - useAutoLock : verrouillage automatique après inactivité
  * - useNotificationScheduler : rappels locaux des événements à venir
+ * - CommandPalette : recherche globale Ctrl+K
  */
 export function AppShell({ children }: { children: ReactNode }) {
   useAutoLock();
@@ -28,6 +30,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
       <MobileNav />
       <PwaRegister />
+      <CommandPalette />
     </div>
   );
 }
