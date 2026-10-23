@@ -10,6 +10,7 @@ import {
   Lock,
   NotebookPen,
   Save,
+  Search,
   Settings,
   ShieldCheck,
   Sparkles,
@@ -72,12 +73,24 @@ export function Sidebar() {
             V
           </span>
         </div>
-        <div>
+        <div className="min-w-0 flex-1">
           <p className="font-serif text-xl font-semibold leading-none text-primary">Velora</p>
           <p className="mt-1 text-[11px] leading-tight text-secondary">
             Votre carrière, votre espace privé
           </p>
         </div>
+        <button
+          type="button"
+          onClick={() =>
+            window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }))
+          }
+          aria-label="Recherche globale (Ctrl+K)"
+          title="Recherche globale (Ctrl+K)"
+          className="transition-velora flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-subtle bg-card px-2 text-[11px] text-secondary hover:text-primary"
+        >
+          <Search className="h-3.5 w-3.5" aria-hidden />
+          <kbd className="rounded bg-surface px-1 font-sans">Ctrl K</kbd>
+        </button>
       </div>
 
       <nav className="flex-1 space-y-6 overflow-y-auto px-4 py-6">
