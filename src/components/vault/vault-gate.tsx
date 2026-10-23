@@ -1,16 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Lock, ShieldCheck } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { FileUp, Lock, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { useVaultStore } from "@/store/vault-store";
 import { vaultExists, unlockVault, createVault, isUnlocked } from "@/lib/vault/vault-service";
+import {
+  parseBackup,
+  restoreVaultFromBackup,
+  verifyBackupIntegrity,
+} from "@/lib/vault/backup-service";
 
 /**
  * Velora — portail du coffre-fort.
  *
- * Si aucun coffre n'existe : écran de création (phrase secrète).
+ * Si aucun coffre n'existe : écran de création (phrase secrète) + restauration
+ * depuis une sauvegarde .velora (nouvel appareil).
  * Si un coffre existe mais est verrouillé : écran de déverrouillage.
  * Si déverrouillé : rend les enfants.
  */
@@ -20,6 +26,8 @@ export function VaultGate({ children }: { children: React.ReactNode }) {
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const restoreInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,6 +77,29 @@ export function VaultGate({ children }: { children: React.ReactNode }) {
       setError(err instanceof Error ? err.message : "Erreur lors du déverrouillage");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleRestoreFromBackup(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError(null);
+    setRestoring(true);
+    try {
+      const text = await file.text();
+      const archive = parseBackup(text);
+      await verifyBackupIntegrity(archive);
+      await restoreVaultFromBackup(archive);
+      setStatus("locked");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Erreur lors de la restauration. Vérifiez le fichier .velora."
+      );
+    } finally {
+      setRestoring(false);
+      if (restoreInputRef.current) restoreInputRef.current.value = "";
     }
   }
 
@@ -155,9 +186,35 @@ export function VaultGate({ children }: { children: React.ReactNode }) {
         </form>
 
         {isCreate && (
-          <p className="mt-4 text-center text-xs text-secondary">
-            Sans cette phrase, vos données sont irrécupérables. Aucune récupération côté serveur.
-          </p>
+          <>
+            <div className="my-6 flex items-center gap-3 text-xs uppercase tracking-wide text-secondary">
+              <span className="bg-subtle h-px flex-1" />
+              ou
+              <span className="bg-subtle h-px flex-1" />
+            </div>
+            <input
+              ref={restoreInputRef}
+              type="file"
+              accept=".velora,.json,application/json"
+              className="hidden"
+              onChange={handleRestoreFromBackup}
+              aria-label="Restaurer depuis une sauvegarde"
+            />
+            <Button
+              variant="outline"
+              className="w-full"
+              disabled={restoring}
+              onClick={() => restoreInputRef.current?.click()}
+            >
+              <FileUp className="h-4 w-4" aria-hidden="true" />
+              {restoring ? "Vérification en cours…" : "Restaurer depuis une sauvegarde .velora"}
+            </Button>
+            <p className="mt-4 text-center text-xs text-secondary">
+              Sur un nouvel appareil, restaurez votre sauvegarde puis déverrouillez avec votre
+              phrase secrète. Sans cette phrase, vos données sont irrécupérables. Aucune
+              récupération côté serveur.
+            </p>
+          </>
         )}
       </Card>
     </div>
