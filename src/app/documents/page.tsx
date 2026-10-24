@@ -30,6 +30,8 @@ import {
   type DocumentType,
 } from "@/lib/schema/document";
 import { cn } from "@/lib/utils/cn";
+import { toastUndo, toastError } from "@/store/toast-store";
+import { SkeletonGrid } from "@/components/common/skeleton";
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} o`;
@@ -154,9 +156,37 @@ export default function DocumentsPage() {
 
   async function handleDelete(id: string) {
     setDeletingId(null);
+    // Snapshot métadonnées + contenu pour undo
+    const snapshot = documents.find((d) => d.id === id);
+    let snapshotContent: Uint8Array | null = null;
+    if (snapshot) {
+      try {
+        snapshotContent = await getDocumentContent(id);
+      } catch {
+        snapshotContent = null;
+      }
+    }
     try {
       await deleteDocument(id);
       await refresh();
+      if (snapshot && snapshotContent) {
+        toastUndo(`Document « ${snapshot.name} » supprimé.`, async () => {
+          try {
+            await createDocument({
+              name: snapshot.name,
+              type: snapshot.type,
+              mimeType: snapshot.mimeType,
+              content: snapshotContent,
+              tags: snapshot.tags,
+              applicationId: snapshot.applicationId,
+            });
+            await refresh();
+          } catch (err) {
+            console.error("[documents] Erreur annulation:", err);
+            toastError("Impossible d'annuler la suppression.");
+          }
+        });
+      }
     } catch (err) {
       console.error("[documents] Erreur suppression:", err);
       setError("Erreur lors de la suppression.");
@@ -210,10 +240,7 @@ export default function DocumentsPage() {
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-lavender" aria-hidden />
-            <span className="sr-only">Chargement des documents…</span>
-          </div>
+          <SkeletonGrid count={6} type="document" />
         ) : documents.length === 0 ? (
           <Card className="p-12 text-center">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-card-elevated">

@@ -6,8 +6,11 @@ import { MobileNav } from "./mobile-nav";
 import { Sidebar } from "./sidebar";
 import { PwaRegister } from "@/components/pwa-register";
 import { CommandPalette } from "@/components/common/command-palette";
+import { ToastContainer } from "@/components/common/toast-container";
+import { OnboardingWizard } from "@/components/onboarding/onboarding-wizard";
 import { useAutoLock } from "@/hooks/use-auto-lock";
 import { useNotificationScheduler } from "@/hooks/use-notification-scheduler";
+import { useGlobalShortcuts } from "@/hooks/use-global-shortcuts";
 
 /**
  * Velora — shell applicatif : sidebar (desktop) + barre inférieure (mobile) + header.
@@ -20,6 +23,7 @@ import { useNotificationScheduler } from "@/hooks/use-notification-scheduler";
 export function AppShell({ children }: { children: ReactNode }) {
   useAutoLock();
   useNotificationScheduler();
+  useGlobalShortcuts();
 
   return (
     <div className="flex min-h-screen">
@@ -31,6 +35,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       <MobileNav />
       <PwaRegister />
       <CommandPalette />
+      <ToastContainer />
+      <OnboardingWizard />
     </div>
   );
 }

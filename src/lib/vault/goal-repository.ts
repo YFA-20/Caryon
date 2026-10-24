@@ -124,6 +124,7 @@ export async function getSettings(): Promise<VaultSettings> {
       autoLockMs: 15 * 60 * 1000,
       theme: "dark",
       notificationsEnabled: true,
+      onboardingCompleted: false,
       updatedAt: new Date().toISOString(),
     };
   }
@@ -139,6 +140,7 @@ export async function getSettings(): Promise<VaultSettings> {
           autoLockMs: 15 * 60 * 1000,
           theme: "dark",
           notificationsEnabled: true,
+          onboardingCompleted: false,
           updatedAt: new Date().toISOString(),
         };
   } catch {
@@ -148,6 +150,7 @@ export async function getSettings(): Promise<VaultSettings> {
       autoLockMs: 15 * 60 * 1000,
       theme: "dark",
       notificationsEnabled: true,
+      onboardingCompleted: false,
       updatedAt: new Date().toISOString(),
     };
   }

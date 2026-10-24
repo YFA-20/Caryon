@@ -16,6 +16,8 @@ import {
   type GoalPeriod,
 } from "@/lib/schema/goal";
 import { cn } from "@/lib/utils/cn";
+import { toastUndo, toastError } from "@/store/toast-store";
+import { stripMetaFields } from "@/lib/utils/strip-meta";
 
 export default function ObjectifsPage() {
   const [progressList, setProgressList] = useState<GoalProgress[]>([]);
@@ -88,9 +90,22 @@ export default function ObjectifsPage() {
 
   async function handleDelete(id: string) {
     setDeletingId(null);
+    const snapshot = progressList.find((p) => p.goal.id === id)?.goal;
     try {
       await deleteGoal(id);
       await load();
+      if (snapshot) {
+        toastUndo(`Objectif « ${snapshot.title} » supprimé.`, async () => {
+          try {
+            const rest = stripMetaFields(snapshot);
+            await createGoal(rest);
+            await load();
+          } catch (err) {
+            console.error("[objectifs] Erreur annulation:", err);
+            toastError("Impossible d'annuler la suppression.");
+          }
+        });
+      }
     } catch (err) {
       console.error("[objectifs] Erreur suppression:", err);
       setError("Erreur lors de la suppression.");

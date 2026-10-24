@@ -72,6 +72,8 @@ export const vaultSettingsSchema = z.object({
   theme: z.enum(["dark"]).default("dark"),
   /** Notifications locales activées (préférence UI, la permission navigateur prime). */
   notificationsEnabled: z.boolean().default(true),
+  /** L'onboarding de première utilisation a-t-il été suivi ? */
+  onboardingCompleted: z.boolean().default(false),
   updatedAt: z.string().datetime(),
 });
 

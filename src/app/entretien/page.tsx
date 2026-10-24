@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { listApplications } from "@/lib/vault/application-repository";
 import {
   listInterviewPreps,
+  getInterviewPrepByApplication,
   createInterviewPrep,
   updateInterviewPrep,
   deleteInterviewPrep,
@@ -34,6 +35,8 @@ import {
 } from "@/lib/schema/interview";
 import { APPLICATION_STATUS_LABELS } from "@/lib/schema/application";
 import { cn } from "@/lib/utils/cn";
+import { toastUndo, toastError } from "@/store/toast-store";
+import { stripMetaFields } from "@/lib/utils/strip-meta";
 
 export default function EntretienPage() {
   const [preps, setPreps] = useState<InterviewPrep[]>([]);
@@ -140,10 +143,30 @@ export default function EntretienPage() {
   }
 
   async function handleDeletePrep(id: string) {
+    const snapshot = preps.find((p) => p.id === id);
     try {
       await deleteInterviewPrep(id);
       setSelectedId(null);
       await load();
+      if (snapshot) {
+        const app = applications.find((a) => a.id === snapshot.applicationId);
+        toastUndo(`Fiche « ${app ? app.company : "entretien"} » supprimée.`, async () => {
+          try {
+            const rest = stripMetaFields(snapshot);
+            const existing = await getInterviewPrepByApplication(snapshot.applicationId);
+            if (existing) {
+              await updateInterviewPrep(existing.id, rest);
+            } else {
+              const created = await createInterviewPrep(snapshot.applicationId);
+              await updateInterviewPrep(created.id, rest);
+            }
+            await load();
+          } catch (err) {
+            console.error("[entretien] Erreur annulation:", err);
+            toastError("Impossible d'annuler la suppression.");
+          }
+        });
+      }
     } catch (err) {
       console.error("[entretien] Erreur suppression:", err);
       setError("Erreur lors de la suppression.");
