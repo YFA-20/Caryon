@@ -11,7 +11,7 @@ import { seedDemoData, hasExistingData, type DemoSeedResult } from "@/lib/vault/
 import { toastSuccess, toastError } from "@/store/toast-store";
 import { useVaultStore } from "@/store/vault-store";
 import { useUiStore } from "@/store/ui-store";
-import { lock } from "@/lib/vault/vault-service";
+import { forceLock } from "@/lib/vault/vault-service";
 
 const AUTO_LOCK_OPTIONS = [
   { value: 0, label: "Désactivé" },
@@ -92,8 +92,7 @@ export default function ParametresPage() {
     setWiping(true);
     try {
       await wipeAllData();
-      lock();
-      window.location.reload();
+      forceLock();
     } catch (err) {
       console.error("[parametres] Erreur suppression:", err);
       setError("Erreur lors de la suppression du coffre.");
