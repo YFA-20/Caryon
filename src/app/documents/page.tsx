@@ -7,6 +7,7 @@ import {
   FileImage,
   FileType2,
   Loader2,
+  Sparkles,
   Trash2,
   Upload,
   AlertTriangle,
@@ -30,8 +31,9 @@ import {
   type DocumentType,
 } from "@/lib/schema/document";
 import { cn } from "@/lib/utils/cn";
-import { toastUndo, toastError } from "@/store/toast-store";
+import { toastUndo, toastError, toastSuccess } from "@/store/toast-store";
 import { SkeletonGrid } from "@/components/common/skeleton";
+import { CvOfferComparison } from "@/components/ai/cv-offer-comparison";
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} o`;
@@ -79,6 +81,11 @@ const ACCEPT_ATTR = ALLOWED_MIME_TYPES.join(",") + ".pdf,.doc,.docx,.txt,.png,.j
 
 export default function DocumentsPage() {
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [showCvComparison, setShowCvComparison] = useState(false);
+  const [cvForComparison, setCvForComparison] = useState<{ text: string; name: string } | null>(
+    null
+  );
+  const [extractingCv, setExtractingCv] = useState(false);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -129,6 +136,26 @@ export default function DocumentsPage() {
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  async function handleExtractForComparison(doc: Document) {
+    setExtractingCv(true);
+    try {
+      const content = await getDocumentContent(doc.id);
+      if (!content) {
+        toastError("Impossible de lire le contenu du document.");
+        return;
+      }
+      const text = new TextDecoder("utf-8", { fatal: false }).decode(content);
+      setCvForComparison({ text, name: doc.name });
+      setShowCvComparison(true);
+      toastSuccess("Texte extrait — prêt pour la comparaison IA.");
+    } catch (err) {
+      console.error("[documents] Erreur extraction CV:", err);
+      toastError("Erreur lors de l'extraction du texte.");
+    } finally {
+      setExtractingCv(false);
     }
   }
 
@@ -299,6 +326,18 @@ export default function DocumentsPage() {
                   </p>
 
                   <div className="mt-auto flex items-center gap-2">
+                    {doc.type === "cv" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={extractingCv}
+                        onClick={() => handleExtractForComparison(doc)}
+                        title="Comparer ce CV avec une offre (IA)"
+                      >
+                        <Sparkles className="h-4 w-4 text-lavender" aria-hidden />
+                        Comparer IA
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
@@ -333,6 +372,24 @@ export default function DocumentsPage() {
                 </Card>
               );
             })}
+          </div>
+        )}
+        {/* Comparaison CV ↔ Offre IA */}
+        {showCvComparison && cvForComparison && (
+          <div className="mt-6">
+            <CvOfferComparison cvText={cvForComparison.text} cvName={cvForComparison.name} />
+            <div className="mt-2 flex justify-end">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setShowCvComparison(false);
+                  setCvForComparison(null);
+                }}
+              >
+                Fermer la comparaison
+              </Button>
+            </div>
           </div>
         )}
       </div>

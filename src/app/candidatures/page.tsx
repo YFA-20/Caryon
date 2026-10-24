@@ -24,6 +24,7 @@ import {
   type TableFilters,
 } from "@/components/applications/applications-table";
 import { ApplicationTimeline } from "@/components/applications/application-timeline";
+import { CoverLetterGenerator } from "@/components/ai/cover-letter-generator";
 import { SkeletonGrid } from "@/components/common/skeleton";
 import { applicationTypeSchema } from "@/lib/schema/application";
 import {
@@ -95,6 +96,7 @@ function CandidaturesPageInner() {
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | "all">("all");
   const [prefillNotice, setPrefillNotice] = useState(false);
   const [timelineApp, setTimelineApp] = useState<Application | null>(null);
+  const [showLetterGen, setShowLetterGen] = useState(false);
 
   // Etats du tableau avance
   const [sort, setSort] = useState<SortState>({ column: "updatedAt", direction: "desc" });
@@ -434,12 +436,34 @@ function CandidaturesPageInner() {
               setEditing(null);
               refresh();
             }}
+            onOpenLetterGen={() => setShowLetterGen(true)}
           />
         )}
 
         {/* Chronologie */}
         {timelineApp && (
           <ApplicationTimeline application={timelineApp} onClose={() => setTimelineApp(null)} />
+        )}
+
+        {/* Générateur de lettre IA */}
+        {showLetterGen && editing && (
+          <div className="space-y-2">
+            <CoverLetterGenerator
+              offerText={editing.notes || editing.offerUrl || ""}
+              company={editing.company}
+              position={editing.position}
+              onGenerated={(letter) => {
+                // Pré-remplit les notes avec la lettre générée
+                setEditing((prev) => (prev ? { ...prev, notes: letter } : prev));
+                toastSuccess("Lettre ajoutée aux notes de la candidature.");
+              }}
+            />
+            <div className="flex justify-end">
+              <Button variant="ghost" size="sm" onClick={() => setShowLetterGen(false)}>
+                Fermer le générateur
+              </Button>
+            </div>
+          </div>
         )}
 
         {/* Contenu */}
@@ -619,6 +643,7 @@ export default function CandidaturesPage() {
 interface ApplicationFormProps {
   mode: "create" | "edit";
   application?: Application;
+  onOpenLetterGen?: () => void;
   prefill?: {
     company?: string;
     position?: string;
@@ -634,7 +659,14 @@ interface ApplicationFormProps {
   onSaved: () => void;
 }
 
-function ApplicationForm({ mode, application, prefill, onClose, onSaved }: ApplicationFormProps) {
+function ApplicationForm({
+  mode,
+  application,
+  prefill,
+  onClose,
+  onSaved,
+  onOpenLetterGen,
+}: ApplicationFormProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isEdit = mode === "edit" && application;
@@ -881,6 +913,20 @@ function ApplicationForm({ mode, application, prefill, onClose, onSaved }: Appli
           </p>
         )}
         <div className="flex justify-end gap-3">
+          {isEdit && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                onClose();
+                onOpenLetterGen?.();
+              }}
+              className="gap-1.5"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-lavender" aria-hidden />
+              Générer une lettre (IA)
+            </Button>
+          )}
           <Button type="button" variant="ghost" onClick={onClose}>
             Annuler
           </Button>

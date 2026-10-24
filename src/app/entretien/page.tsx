@@ -9,6 +9,7 @@ import {
   Loader2,
   MessageSquare,
   Plus,
+  Sparkles,
   Target,
   Trash2,
 } from "lucide-react";
@@ -28,6 +29,7 @@ import {
   questionsProgress,
 } from "@/lib/vault/interview-repository";
 import type { Application } from "@/lib/schema/application";
+import { InterviewPrepAi } from "@/components/ai/interview-prep-ai";
 import type { InterviewPrep, InterviewFormat, InterviewQuestion } from "@/lib/schema/interview";
 import {
   INTERVIEW_FORMAT_LABELS,
@@ -41,6 +43,7 @@ import { stripMetaFields } from "@/lib/utils/strip-meta";
 export default function EntretienPage() {
   const [preps, setPreps] = useState<InterviewPrep[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
+  const [showAiPrep, setShowAiPrep] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -312,16 +315,37 @@ export default function EntretienPage() {
                         {APPLICATION_STATUS_LABELS[selectedApp.status]}
                       </CardDescription>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label="Supprimer cette fiche"
-                      className="text-secondary hover:text-danger"
-                      onClick={() => handleDeletePrep(selected.id)}
-                    >
-                      <Trash2 className="h-4 w-4" aria-hidden />
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowAiPrep((v) => !v)}
+                        className="gap-1.5"
+                      >
+                        <Sparkles className="h-3.5 w-3.5 text-lavender" aria-hidden />
+                        {showAiPrep ? "Masquer l'IA" : "Prépa IA"}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Supprimer cette fiche"
+                        className="text-secondary hover:text-danger"
+                        onClick={() => handleDeletePrep(selected.id)}
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden />
+                      </Button>
+                    </div>
                   </div>
+
+                  {showAiPrep && (
+                    <div className="mt-4">
+                      <InterviewPrepAi
+                        offerText={selectedApp.notes || selectedApp.offerUrl || ""}
+                        company={selectedApp.company}
+                        position={selectedApp.position}
+                      />
+                    </div>
+                  )}
 
                   <div className="mt-4 grid gap-4 sm:grid-cols-2">
                     <label className="block text-sm">
