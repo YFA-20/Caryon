@@ -7,10 +7,16 @@
 import "fake-indexeddb/auto";
 import { describe, it, expect, beforeAll, beforeEach } from "vitest";
 import { createVault, unlockVault } from "@/lib/vault/vault-service";
-import { seedDemoData, hasExistingData } from "@/lib/vault/demo-data-service";
-import { listApplications } from "@/lib/vault/application-repository";
+import {
+  seedDemoData,
+  hasExistingData,
+  clearDemoData,
+  DEMO_TAG,
+  DEMO_GOAL_PREFIX,
+} from "@/lib/vault/demo-data-service";
+import { listApplications, createApplication } from "@/lib/vault/application-repository";
+import { createGoal, listGoals } from "@/lib/vault/goal-repository";
 import { listEvents } from "@/lib/vault/calendar-repository";
-import { listGoals } from "@/lib/vault/goal-repository";
 import { listJournalEntries } from "@/lib/vault/journal-repository";
 import { listDocuments } from "@/lib/vault/document-repository";
 import { listInterviewPreps } from "@/lib/vault/interview-repository";
@@ -112,10 +118,10 @@ describe("demo-data-service", () => {
     }
   });
 
-  it("hasExistingData retourne true après seedDemoData", async () => {
+  it("hasExistingData retourne false après seedDemoData (données démo ignorées)", async () => {
     await seedDemoData();
     const result = await hasExistingData();
-    expect(result).toBe(true);
+    expect(result).toBe(false); // Les données démo sont ignorées
   });
 
   it("seedDemoData peut être appelé deux fois (données s'accumulent)", async () => {
@@ -136,5 +142,150 @@ describe("demo-data-service", () => {
       expect(appIds.has(prep.applicationId)).toBe(true);
       expect(prep.checklist.length).toBeGreaterThan(0);
     }
+  });
+
+  it("les candidatures démo ont le tag DEMO_TAG", async () => {
+    await seedDemoData();
+    const apps = await listApplications();
+    for (const app of apps) {
+      expect(app.tags).toContain(DEMO_TAG);
+    }
+  });
+
+  it("les objectifs démo ont le préfixe [DÉMO]", async () => {
+    await seedDemoData();
+    const goals = await listGoals();
+    expect(goals.length).toBeGreaterThanOrEqual(2);
+    for (const goal of goals) {
+      expect(goal.title.startsWith(DEMO_GOAL_PREFIX)).toBe(true);
+    }
+  });
+});
+
+describe("clearDemoData", () => {
+  beforeEach(async () => {
+    await db.vault.clear();
+    await db.records.clear();
+    await db.documents.clear();
+    await createVault(PASSPHRASE);
+    await unlockVault(PASSPHRASE);
+  });
+
+  it("supprime toutes les données démo après seedDemoData", async () => {
+    await seedDemoData();
+    // Vérifier qu'il y a des données
+    const appsBefore = await listApplications();
+    expect(appsBefore.length).toBeGreaterThanOrEqual(5);
+
+    const result = await clearDemoData();
+
+    // Vérifier que tout est supprimé
+    const appsAfter = await listApplications();
+    const docsAfter = await listDocuments();
+    const eventsAfter = await listEvents();
+    const goalsAfter = await listGoals();
+    const journalAfter = await listJournalEntries();
+    const prepsAfter = await listInterviewPreps();
+
+    expect(appsAfter.length).toBe(0);
+    expect(docsAfter.length).toBe(0);
+    expect(eventsAfter.length).toBe(0);
+    expect(goalsAfter.length).toBe(0);
+    expect(journalAfter.length).toBe(0);
+    expect(prepsAfter.length).toBe(0);
+
+    // Vérifier le résultat
+    expect(result.applications).toBeGreaterThanOrEqual(5);
+    expect(result.documents).toBeGreaterThanOrEqual(2);
+    expect(result.events).toBeGreaterThanOrEqual(3);
+    expect(result.goals).toBeGreaterThanOrEqual(2);
+    expect(result.journalEntries).toBeGreaterThanOrEqual(3);
+    expect(result.interviewPreps).toBeGreaterThanOrEqual(1);
+  });
+
+  it("ne supprime PAS les données non-démo", async () => {
+    // Créer une vraie candidature (sans tag DEMO_TAG)
+    await createApplication({
+      company: "Ma vraie entreprise",
+      position: "Mon vrai poste",
+      type: "cdi",
+      status: "brouillon",
+      location: "Paris",
+      remote: false,
+      salary: "",
+      source: "",
+      contactName: "",
+      contactEmail: "",
+      notes: "",
+      priority: "normale",
+      tags: ["real-data"],
+    });
+    // Créer un vrai objectif (sans préfixe [DÉMO])
+    await createGoal({
+      title: "Mon vrai objectif",
+      description: "",
+      metric: "applications_sent",
+      target: 5,
+      period: "month",
+      startAt: new Date().toISOString(),
+      endAt: "",
+    });
+    // Seed les données démo
+    await seedDemoData();
+
+    await clearDemoData();
+
+    // Les vraies données doivent rester
+    const apps = await listApplications();
+    const goals = await listGoals();
+    expect(apps.length).toBe(1);
+    expect(apps[0]!.company).toBe("Ma vraie entreprise");
+    expect(goals.length).toBe(1);
+    expect(goals[0]!.title).toBe("Mon vrai objectif");
+  });
+
+  it("hasExistingData retourne false après clearDemoData (plus que des données démo)", async () => {
+    await seedDemoData();
+    // Avant cleanup : hasExistingData devrait retourner false car ce sont des données démo
+    const before = await hasExistingData();
+    expect(before).toBe(false); // Car hasExistingData ignore les données taggées DEMO_TAG
+
+    await clearDemoData();
+
+    const after = await hasExistingData();
+    expect(after).toBe(false);
+  });
+
+  it("hasExistingData retourne true s'il y a des vraies données + des données démo", async () => {
+    // Créer une vraie candidature
+    await createApplication({
+      company: "Vraie entreprise",
+      position: "Vrai poste",
+      type: "cdi",
+      status: "envoyee",
+      location: "",
+      remote: false,
+      salary: "",
+      source: "",
+      contactName: "",
+      contactEmail: "",
+      notes: "",
+      priority: "normale",
+      tags: [],
+    });
+    await seedDemoData();
+
+    const result = await hasExistingData();
+    expect(result).toBe(true); // Car il y a une vraie candidature
+  });
+
+  it("clearDemoData sur un coffre vide ne lève pas d'erreur", async () => {
+    const result = await clearDemoData();
+    expect(result.applications).toBe(0);
+    expect(result.documents).toBe(0);
+    expect(result.events).toBe(0);
+    expect(result.goals).toBe(0);
+    expect(result.journalEntries).toBe(0);
+    expect(result.interviewPreps).toBe(0);
   });
 });
