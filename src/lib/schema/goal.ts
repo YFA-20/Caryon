@@ -76,6 +76,14 @@ export const vaultSettingsSchema = z.object({
   onboardingCompleted: z.boolean().default(false),
   /** Mode démonstration activé (données fictives chiffrées, clairement identifiées) */
   demoMode: z.boolean().default(false),
+  /** Consentement explicite pour les fonctionnalités IA (opt-in, OFF par défaut) */
+  aiConsent: z.boolean().default(false),
+  /** Fournisseur IA préféré : "local" (WebLLM dans le navigateur) ou "cloud" (API externe) */
+  aiProvider: z.enum(["local", "cloud"]).default("local"),
+  /** Clé API cloud (optionnelle, stockée chiffrée, jamais transmise en clair) */
+  aiApiKey: z.string().max(500).default(""),
+  /** Nom du modèle cloud préféré (ex: "gpt-4o-mini", "claude-3-haiku") */
+  aiModel: z.string().max(100).default(""),
   updatedAt: z.string().datetime(),
 });
 

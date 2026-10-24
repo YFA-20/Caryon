@@ -45,6 +45,7 @@ const NAV_GROUPS: NavGroup[] = [
     title: "Ma carrière",
     items: [
       { label: "Explorer les offres", href: "/offres", icon: Sparkles },
+      { label: "Assistant IA", href: "/ia", icon: Sparkles },
       { label: "Préparer un entretien", href: "/entretien", icon: Target },
       { label: "Analyses", href: "/analyses", icon: TrendingUp },
       { label: "Mes objectifs", href: "/objectifs", icon: Target },
