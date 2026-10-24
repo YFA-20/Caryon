@@ -17,15 +17,18 @@ const ACTIVITY_EVENTS: (keyof WindowEventMap)[] = [
  * Surveille l'activité utilisateur (pointer, clavier, scroll, touch) et
  * verrouille le coffre si aucune activité pendant `autoLockMs`.
  *
- * SÉCURITÉ RENFORCÉE (fix page blanche) :
+ * SÉCURITÉ RENFORCÉE (fix page blanche + fix timer) :
  * - Utilise `forceLock()` qui synchronise le store Zustand + redirige proprement.
  * - Détecte le retour au premier plan (`visibilitychange`) : si le délai
  *   d'inactivité est dépassé pendant que l'onglet était en arrière-plan
  *   (timers throttlés par le navigateur), verrouille immédiatement.
- * - Le timer est réinitialisé à chaque interaction.
+ * - Lit `lastActivityAt` via `getState()` pour avoir la valeur à jour
+ *   (évite les stale closures sur le state Zustand).
+ * - Au démarrage (status passe à "unlocked"), réinitialise le timer
+ *   proprement pour ne pas hériter d'un lastActivityAt ancien.
  */
 export function useAutoLock() {
-  const { status, autoLockMs, lastActivityAt, touchActivity } = useVaultStore();
+  const { status, autoLockMs, touchActivity } = useVaultStore();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -50,16 +53,18 @@ export function useAutoLock() {
 
     // Détection du retour au premier plan : les navigateurs throttlent
     // les timers en arrière-plan. Si l'utilisateur revient après le délai,
-    // on verrouille immédiatement au lieu d'attendre le timer (qui peut
-    // ne pas encore avoir été exécuté).
+    // on verrouille immédiatement au lieu d'attendre le timer.
     function handleVisibilityChange() {
       if (document.visibilityState === "visible" && isUnlocked()) {
-        const elapsed = Date.now() - lastActivityAt;
+        // Lit lastActivityAt via getState() pour avoir la valeur à jour
+        const currentLastActivity = useVaultStore.getState().lastActivityAt;
+        const elapsed = Date.now() - currentLastActivity;
         if (elapsed >= autoLockMs) {
           doLock();
         } else {
           // Reprogramme le timer pour le temps restant
-          scheduleLock();
+          if (timerRef.current) clearTimeout(timerRef.current);
+          timerRef.current = setTimeout(doLock, autoLockMs - elapsed);
         }
       }
     }
@@ -68,6 +73,11 @@ export function useAutoLock() {
       window.addEventListener(evt, handleActivity, { passive: true });
     }
     document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    // Au démarrage du hook (déverrouillage), s'assurer que le timer
+    // démarre depuis maintenant, pas depuis un lastActivityAt ancien.
+    // Le VaultGate appelle touchActivity() au déverrouillage, mais on
+    // reprogramme le timer ici pour être sûr.
     scheduleLock();
 
     return () => {
@@ -77,7 +87,5 @@ export function useAutoLock() {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-    // lastActivityAt change à chaque interaction, on veut le relire
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, autoLockMs, touchActivity]);
 }

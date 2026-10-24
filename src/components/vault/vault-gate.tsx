@@ -17,6 +17,7 @@ import {
   restoreVaultFromBackup,
   verifyBackupIntegrity,
 } from "@/lib/vault/backup-service";
+import { getSettings } from "@/lib/vault/goal-repository";
 
 /**
  * Velora — portail du coffre-fort.
@@ -31,9 +32,14 @@ import {
  * « unlocked ». Si la session a été effacée (auto-lock, fermeture forcée)
  * sans que le store Zustand n'ait été notifié, le guard force le retour
  * au portail de déverrouillage.
+ *
+ * FIX auto-lock : au déverrouillage, on appelle touchActivity() pour
+ * réinitialiser lastActivityAt. Sinon, après un F5, lastActivityAt date
+ * du chargement de la page (avant le déverrouillage), ce qui fait que
+ * le délai d'inactivité est déjà dépassé au moment du déverrouillage.
  */
 export function VaultGate({ children }: { children: React.ReactNode }) {
-  const { status, setStatus } = useVaultStore();
+  const { status, setStatus, setAutoLockMs, touchActivity } = useVaultStore();
   const [passphrase, setPassphrase] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -44,8 +50,16 @@ export function VaultGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // Charge autoLockMs depuis les settings chiffrées (si déverrouillé)
       if (isUnlocked()) {
+        try {
+          const settings = await getSettings();
+          setAutoLockMs(settings.autoLockMs);
+        } catch {
+          // Ignore si les settings ne sont pas lisibles
+        }
         setStatus("unlocked");
+        touchActivity(); // FIX: réinitialise le timer d'inactivité
         return;
       }
       const exists = await vaultExists();
@@ -54,6 +68,7 @@ export function VaultGate({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setStatus]);
 
   // Guard : vérifie que la session est toujours vivante quand status === "unlocked"
@@ -85,6 +100,9 @@ export function VaultGate({ children }: { children: React.ReactNode }) {
     setBusy(true);
     try {
       await createVault(passphrase, { testMode: process.env.NODE_ENV === "test" });
+      // Défaut 15 min pour un nouveau coffre
+      setAutoLockMs(15 * 60 * 1000);
+      touchActivity(); // FIX: démarre le timer d'inactivité à la création
       setStatus("unlocked");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur lors de la création");
@@ -99,6 +117,14 @@ export function VaultGate({ children }: { children: React.ReactNode }) {
     setBusy(true);
     try {
       await unlockVault(passphrase, { testMode: process.env.NODE_ENV === "test" });
+      // Charge autoLockMs depuis les settings chiffrées
+      try {
+        const settings = await getSettings();
+        setAutoLockMs(settings.autoLockMs);
+      } catch {
+        // Ignore si les settings ne sont pas lisibles
+      }
+      touchActivity(); // FIX: réinitialise le timer d'inactivité au déverrouillage
       setStatus("unlocked");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur lors du déverrouillage");

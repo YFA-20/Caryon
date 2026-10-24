@@ -32,6 +32,34 @@ export const DEMO_TAG = "__demo__";
 /** Préfixe ajouté aux titres des objectifs démo. */
 export const DEMO_GOAL_PREFIX = "[DÉMO] ";
 
+/** Ancien tag utilisé avant le fix (données démo créées avant PR #15). */
+export const LEGACY_DEMO_TAG = "demo";
+
+/** Entreprises connues du jeu de données démo (pour nettoyer les données legacy). */
+export const DEMO_COMPANIES = new Set([
+  "Atelier Nova",
+  "Lumina Studio",
+  "DataFlow Analytics",
+  "Crédit Horizon",
+  "GreenTech Solutions",
+  "Mairie de Villeurbanne",
+  "Pixel & Co",
+  "Nexus Santé",
+  // Variantes avec marqueur "(fictif)" vu dans les captures utilisateur
+  "Atelier Nova (fictif)",
+  "Studio Lumen (fictif)",
+  "Lumina Studio (fictif)",
+]);
+
+/** Vérifie si une candidature est une donnée démo (nouveau tag, ancien tag, ou entreprise connue). */
+export function isDemoApplication(app: { tags: string[]; company: string }): boolean {
+  return (
+    app.tags.includes(DEMO_TAG) ||
+    app.tags.includes(LEGACY_DEMO_TAG) ||
+    DEMO_COMPANIES.has(app.company)
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Helpers de génération déterministe (dates relatives à "maintenant")
 // ---------------------------------------------------------------------------
@@ -492,12 +520,14 @@ export async function hasExistingData(): Promise<boolean> {
     listGoals(),
     listJournalEntries(),
   ]);
-  // Identifie les candidatures démo
-  const demoAppIds = new Set(apps.filter((a) => a.tags.includes(DEMO_TAG)).map((a) => a.id));
-  // Ignore les données démo (taggées DEMO_TAG ou liées à des candidatures démo)
-  const realApps = apps.filter((a) => !a.tags.includes(DEMO_TAG));
+  // Identifie les candidatures démo (nouveau tag, ancien tag, ou entreprise connue)
+  const demoAppIds = new Set(apps.filter((a) => isDemoApplication(a)).map((a) => a.id));
+  // Ignore les données démo (taggées DEMO_TAG/legacy "demo", entreprise connue, ou liées à des candidatures démo)
+  const realApps = apps.filter((a) => !isDemoApplication(a));
   const realGoals = goals.filter((g) => !g.title.startsWith(DEMO_GOAL_PREFIX));
-  const realJournal = journal.filter((j) => !j.tags.includes(DEMO_TAG));
+  const realJournal = journal.filter(
+    (j) => !j.tags.includes(DEMO_TAG) && !j.tags.includes(LEGACY_DEMO_TAG)
+  );
   const realEvents = events.filter((e) => !e.applicationId || !demoAppIds.has(e.applicationId));
   return (
     realApps.length > 0 || realEvents.length > 0 || realGoals.length > 0 || realJournal.length > 0
@@ -539,21 +569,21 @@ export async function clearDemoData(): Promise<DemoCleanupResult> {
     interviewPreps: 0,
   };
 
-  // 1. Candidatures démo
+  // 1. Candidatures démo (nouveau tag __demo__, ancien tag "demo", ou entreprise connue)
   const apps = await listApplications();
   const demoAppIds = new Set<string>();
   for (const app of apps) {
-    if (app.tags.includes(DEMO_TAG)) {
+    if (isDemoApplication(app)) {
       demoAppIds.add(app.id);
       await deleteApplication(app.id);
       result.applications++;
     }
   }
 
-  // 2. Documents démo
+  // 2. Documents démo (nouveau ou ancien tag)
   const docs = await listDocuments();
   for (const doc of docs) {
-    if (doc.tags.includes(DEMO_TAG)) {
+    if (doc.tags.includes(DEMO_TAG) || doc.tags.includes(LEGACY_DEMO_TAG)) {
       await deleteDocument(doc.id);
       result.documents++;
     }
@@ -577,10 +607,10 @@ export async function clearDemoData(): Promise<DemoCleanupResult> {
     }
   }
 
-  // 5. Entrées de journal démo
+  // 5. Entrées de journal démo (nouveau ou ancien tag)
   const journalEntries = await listJournalEntries();
   for (const entry of journalEntries) {
-    if (entry.tags.includes(DEMO_TAG)) {
+    if (entry.tags.includes(DEMO_TAG) || entry.tags.includes(LEGACY_DEMO_TAG)) {
       await deleteJournalEntry(entry.id);
       result.journalEntries++;
     }
