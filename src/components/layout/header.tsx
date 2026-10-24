@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Bell, Lock, Unlock } from "lucide-react";
+import { Bell, FlaskConical, Lock, Unlock } from "lucide-react";
 import { useUiStore } from "@/store/ui-store";
 import { useVaultStore } from "@/store/vault-store";
 import { forceLock } from "@/lib/vault/vault-service";
+import { clearDemoData } from "@/lib/vault/demo-data-service";
+import { saveSettings } from "@/lib/vault/goal-repository";
+import { toastSuccess, toastError } from "@/store/toast-store";
 import {
   getNotificationPermission,
   requestNotificationPermission,
@@ -30,6 +33,7 @@ export function Header() {
     getNotificationPermission()
   );
   const [notifMessage, setNotifMessage] = useState<string | null>(null);
+  const [exitingDemo, setExitingDemo] = useState(false);
 
   async function handleToggleNotifications() {
     setNotifMessage(null);
@@ -55,6 +59,39 @@ export function Header() {
     forceLock();
   }
 
+  /**
+   * Quitte le mode démonstration depuis le header :
+   * 1. Supprime TOUTES les données fictives (clearDemoData)
+   * 2. Désactive demoMode dans les settings chiffrés
+   * 3. Met à jour le store UI
+   */
+  async function handleExitDemo() {
+    if (exitingDemo) return;
+    setExitingDemo(true);
+    try {
+      const result = await clearDemoData();
+      await saveSettings({ demoMode: false });
+      setDemoMode(false);
+      const total =
+        result.applications +
+        result.documents +
+        result.events +
+        result.goals +
+        result.journalEntries +
+        result.interviewPreps;
+      toastSuccess(
+        total > 0
+          ? `Mode démonstration quitté. ${total} données fictives supprimées.`
+          : "Mode démonstration quitté."
+      );
+    } catch (err) {
+      console.error("[header] Erreur sortie démo:", err);
+      toastError("Erreur lors de la sortie du mode démonstration.");
+    } finally {
+      setExitingDemo(false);
+    }
+  }
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-subtle bg-surface/80 px-4 backdrop-blur-md md:px-8">
       <div className="min-w-0 flex-1">
@@ -70,15 +107,19 @@ export function Header() {
         </Badge>
       </div>
 
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => setDemoMode(!demoMode)}
-        aria-pressed={demoMode}
-        title="Activer/désactiver le mode démonstration (données fictives)"
-      >
-        {demoMode ? "Quitter la démo" : "Mode démo"}
-      </Button>
+      {demoMode && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleExitDemo}
+          disabled={exitingDemo}
+          aria-pressed={demoMode}
+          title="Quitter le mode démonstration et supprimer les données fictives"
+        >
+          <FlaskConical className="h-4 w-4" aria-hidden />
+          {exitingDemo ? "Nettoyage…" : "Quitter la démo"}
+        </Button>
+      )}
 
       <div className="relative">
         <Button

@@ -38,7 +38,7 @@ const AUTO_LOCK_OPTIONS = [
 
 export default function ParametresPage() {
   const { setAutoLockMs } = useVaultStore();
-  const { setFirstName } = useUiStore();
+  const { setFirstName, setDemoMode: setUiDemoMode } = useUiStore();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -75,6 +75,7 @@ export default function ParametresPage() {
       setFirstName(settings.firstName);
       setAutoLockMs(settings.autoLockMs);
       setDemoMode(settings.demoMode);
+      setUiDemoMode(settings.demoMode);
       const dataExists = await hasExistingData();
       setHasData(dataExists);
       setAiConsent(settings.aiConsent);
@@ -91,7 +92,7 @@ export default function ParametresPage() {
     } finally {
       setLoading(false);
     }
-  }, [setFirstName, setAutoLockMs]);
+  }, [setFirstName, setAutoLockMs, setUiDemoMode]);
 
   useEffect(() => {
     load();
@@ -149,6 +150,7 @@ export default function ParametresPage() {
         const result: DemoSeedResult = await seedDemoData();
         await saveSettings({ demoMode: true });
         setDemoMode(true);
+        setUiDemoMode(true);
         setDemoConfirm(false);
         toastSuccess(
           `Mode démonstration activé : ${result.applications} candidatures, ${result.documents} documents, ${result.events} événements créés.`
@@ -173,6 +175,7 @@ export default function ParametresPage() {
         const result: DemoCleanupResult = await clearDemoData();
         await saveSettings({ demoMode: false });
         setDemoMode(false);
+        setUiDemoMode(false);
         const total =
           result.applications +
           result.documents +
@@ -192,6 +195,7 @@ export default function ParametresPage() {
       try {
         await saveSettings({ demoMode: false });
         setDemoMode(false);
+        setUiDemoMode(false);
         toastSuccess(
           "Mode démonstration désactivé. Les données fictives sont conservées (vous pouvez les supprimer manuellement)."
         );

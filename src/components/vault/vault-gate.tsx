@@ -59,7 +59,10 @@ export function VaultGate({ children }: { children: React.ReactNode }) {
           // Ignore si les settings ne sont pas lisibles
         }
         setStatus("unlocked");
-        touchActivity(); // FIX: réinitialise le timer d'inactivité
+        // FIX: réinitialise le timer d'inactivité (persisté dans sessionStorage).
+        // useAutoLock appelle aussi touchActivity() au montage, mais on le fait
+        // ici pour le cas où le hook n'est pas encore actif.
+        touchActivity();
         return;
       }
       const exists = await vaultExists();

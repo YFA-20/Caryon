@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CalendarDays, CheckCircle2, Clock, Plus, Send } from "lucide-react";
 import Link from "next/link";
 import { useUiStore } from "@/store/ui-store";
-import { computeDemoStats, DEMO_APPLICATIONS, DEMO_FIRST_NAME } from "@/lib/demo/demo-data";
 import { listApplications } from "@/lib/vault/application-repository";
 import { listUpcomingEvents } from "@/lib/vault/calendar-repository";
 import { computeStats } from "@/lib/vault/stats-service";
@@ -13,7 +12,7 @@ import { APPLICATION_STATUS_LABELS, type Application } from "@/lib/schema/applic
 import type { CalendarEvent } from "@/lib/schema/calendar";
 import { formatDateFr } from "@/lib/utils/date";
 import { AppShell } from "@/components/layout/app-shell";
-import { DemoBanner } from "./demo-banner";
+import { DemoBanner } from "@/components/common/demo-banner";
 import { EmptyState } from "./empty-state";
 import { FollowUpSection } from "./follow-up-section";
 import { PipelineChart } from "./pipeline-chart";
@@ -22,37 +21,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardElevated, CardTitle } from "@/components/ui/card";
 
-function nextDays(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return d.toISOString();
-}
-
-const DEMO_UPCOMING = [
-  {
-    id: "evt-1",
-    title: "Entretien technique — Atelier Nova (fictif)",
-    date: nextDays(3),
-    kind: "Entretien",
-  },
-  {
-    id: "evt-2",
-    title: "Relance — Studio Lumen (fictif)",
-    date: nextDays(5),
-    kind: "Relance",
-  },
-  {
-    id: "evt-3",
-    title: "Répondre à l'offre — Cabinet Aster (fictif)",
-    date: nextDays(2),
-    kind: "Échéance",
-  },
-];
-
 export function Dashboard() {
   const { demoMode, firstName } = useUiStore();
 
-  // Données réelles (chiffrées)
+  // Données réelles (chiffrées) — inclut les données démo seedées quand demoMode est actif
   const [realApps, setRealApps] = useState<Application[]>([]);
   const [realEvents, setRealEvents] = useState<CalendarEvent[]>([]);
   const [realLoading, setRealLoading] = useState(true);
@@ -71,16 +43,14 @@ export function Dashboard() {
   }, []);
 
   useEffect(() => {
-    if (!demoMode) loadReal();
-  }, [demoMode, loadReal]);
+    loadReal();
+  }, [loadReal]);
 
-  const applications: Application[] = useMemo(
-    () => (demoMode ? DEMO_APPLICATIONS : realApps),
-    [demoMode, realApps]
-  );
+  // Les données affichées sont toujours les données réelles du coffre.
+  // En mode démo, ce sont les données fictives seedées (tag __demo__).
+  const applications: Application[] = realApps;
 
   const stats = useMemo(() => {
-    if (demoMode) return computeDemoStats(applications);
     const full = computeStats(applications, realEvents);
     return {
       active: full.active,
@@ -88,9 +58,9 @@ export function Dashboard() {
       positiveResponses: full.byStatus["offre_recue"] ?? 0,
       followupsNeeded: getApplicationsNeedingFollowUp(applications).length,
     };
-  }, [demoMode, applications, realEvents]);
+  }, [applications, realEvents]);
 
-  const name = firstName || (demoMode ? DEMO_FIRST_NAME : "");
+  const name = firstName;
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -99,7 +69,7 @@ export function Dashboard() {
     return "Bonsoir";
   }, []);
 
-  const loading = !demoMode && realLoading;
+  const loading = realLoading;
 
   return (
     <AppShell>
@@ -178,8 +148,8 @@ export function Dashboard() {
               </div>
             </CardElevated>
 
-            {/* Relances intelligentes (données réelles uniquement) */}
-            {!demoMode && <FollowUpSection />}
+            {/* Relances intelligentes */}
+            <FollowUpSection />
 
             <div className="grid gap-6 lg:grid-cols-2">
               {/* Votre journée */}
@@ -227,43 +197,37 @@ export function Dashboard() {
                 <CardTitle>À venir</CardTitle>
                 <CardDescription>Vos prochains événements</CardDescription>
                 <ul className="mt-4 space-y-3">
-                  {(demoMode
-                    ? DEMO_UPCOMING.map((e) => ({
-                        id: e.id,
-                        title: e.title,
-                        dateIso: e.date,
-                        kindLabel: e.kind,
-                      }))
-                    : realEvents.map((e) => ({
-                        id: e.id,
-                        title: e.title,
-                        dateIso: e.startAt,
-                        kindLabel: e.allDay ? "Journée entière" : "Événement",
-                      }))
-                  ).map((evt) => (
-                    <li
-                      key={evt.id}
-                      className="flex items-center gap-3 rounded-2xl border border-subtle bg-background/40 p-3"
-                    >
-                      <div className="flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-xl bg-card-elevated">
-                        <span className="text-[10px] uppercase text-secondary">
-                          {new Date(evt.dateIso).toLocaleDateString("fr-FR", {
-                            month: "short",
-                          })}
-                        </span>
-                        <span className="font-serif text-lg font-semibold leading-none text-rose">
-                          {new Date(evt.dateIso).getDate()}
-                        </span>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-primary">{evt.title}</p>
-                        <p className="text-xs text-secondary">
-                          {evt.kindLabel} · {formatDateFr(evt.dateIso)}
-                        </p>
-                      </div>
-                    </li>
-                  ))}
-                  {!demoMode && realEvents.length === 0 && (
+                  {realEvents
+                    .map((e) => ({
+                      id: e.id,
+                      title: e.title,
+                      dateIso: e.startAt,
+                      kindLabel: e.allDay ? "Journée entière" : "Événement",
+                    }))
+                    .map((evt) => (
+                      <li
+                        key={evt.id}
+                        className="flex items-center gap-3 rounded-2xl border border-subtle bg-background/40 p-3"
+                      >
+                        <div className="flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-xl bg-card-elevated">
+                          <span className="text-[10px] uppercase text-secondary">
+                            {new Date(evt.dateIso).toLocaleDateString("fr-FR", {
+                              month: "short",
+                            })}
+                          </span>
+                          <span className="font-serif text-lg font-semibold leading-none text-rose">
+                            {new Date(evt.dateIso).getDate()}
+                          </span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-primary">{evt.title}</p>
+                          <p className="text-xs text-secondary">
+                            {evt.kindLabel} · {formatDateFr(evt.dateIso)}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  {realEvents.length === 0 && (
                     <li className="rounded-2xl border border-subtle bg-background/40 p-3 text-sm text-secondary">
                       Aucun événement à venir. Ajoutez un entretien ou une relance dans le
                       calendrier.
