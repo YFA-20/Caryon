@@ -126,6 +126,10 @@ export async function getSettings(): Promise<VaultSettings> {
       notificationsEnabled: true,
       onboardingCompleted: false,
       demoMode: false,
+      aiConsent: false,
+      aiProvider: "local",
+      aiApiKey: "",
+      aiModel: "",
       updatedAt: new Date().toISOString(),
     };
   }
@@ -143,6 +147,10 @@ export async function getSettings(): Promise<VaultSettings> {
           notificationsEnabled: true,
           onboardingCompleted: false,
           demoMode: false,
+          aiConsent: false,
+          aiProvider: "local",
+          aiApiKey: "",
+          aiModel: "",
           updatedAt: new Date().toISOString(),
         };
   } catch {
@@ -154,6 +162,10 @@ export async function getSettings(): Promise<VaultSettings> {
       notificationsEnabled: true,
       onboardingCompleted: false,
       demoMode: false,
+      aiConsent: false,
+      aiProvider: "local",
+      aiApiKey: "",
+      aiModel: "",
       updatedAt: new Date().toISOString(),
     };
   }

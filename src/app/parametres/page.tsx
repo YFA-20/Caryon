@@ -1,7 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, FlaskConical, Loader2, Save, Settings, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  FlaskConical,
+  Loader2,
+  Save,
+  Settings,
+  ShieldCheck,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
@@ -42,6 +51,13 @@ export default function ParametresPage() {
   const [demoConfirm, setDemoConfirm] = useState(false);
   const [hasData, setHasData] = useState(false);
 
+  // IA (Phase 2)
+  const [aiConsent, setAiConsent] = useState(false);
+  const [aiProvider, setAiProvider] = useState<"local" | "cloud">("local");
+  const [aiApiKey, setAiApiKey] = useState("");
+  const [aiModel, setAiModel] = useState("");
+  const [aiAvailable, setAiAvailable] = useState<{ local: boolean; cloud: boolean } | null>(null);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -53,6 +69,14 @@ export default function ParametresPage() {
       setDemoMode(settings.demoMode);
       const dataExists = await hasExistingData();
       setHasData(dataExists);
+      setAiConsent(settings.aiConsent);
+      setAiProvider(settings.aiProvider);
+      setAiApiKey(settings.aiApiKey);
+      setAiModel(settings.aiModel);
+      // Détection disponibilité IA
+      const { getAiAvailability } = await import("@/lib/ai/ai-service");
+      const av = await getAiAvailability();
+      setAiAvailable({ local: av.localAvailable, cloud: av.cloudAvailable });
     } catch (err) {
       console.error("[parametres] Erreur chargement:", err);
       setError("Impossible de charger les paramètres.");
@@ -74,6 +98,10 @@ export default function ParametresPage() {
       await saveSettings({
         firstName: formFirstName.trim(),
         autoLockMs: formAutoLock,
+        aiConsent,
+        aiProvider,
+        aiApiKey: aiApiKey.trim(),
+        aiModel: aiModel.trim(),
       });
       setFirstName(formFirstName.trim());
       setAutoLockMs(formAutoLock);
@@ -286,6 +314,114 @@ export default function ParametresPage() {
                   <Button size="sm" variant="ghost" onClick={() => setDemoConfirm(false)}>
                     Annuler
                   </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </Card>
+
+        {/* Assistant IA (Phase 2) */}
+        <Card className="space-y-4" id="ia">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-card-elevated">
+              <Sparkles className="h-5 w-5 text-lavender" aria-hidden />
+            </div>
+            <div>
+              <CardTitle className="text-lg">Assistant IA</CardTitle>
+              <CardDescription>
+                Analysez des offres, générez des lettres et préparez vos entretiens avec l&apos;IA.
+              </CardDescription>
+            </div>
+          </div>
+
+          <div className="space-y-4 rounded-xl border border-subtle bg-surface p-4">
+            {/* Toggle consentement */}
+            <label className="flex items-start gap-3 text-sm">
+              <input
+                type="checkbox"
+                checked={aiConsent}
+                onChange={(e) => setAiConsent(e.target.checked)}
+                className="mt-0.5 rounded border-subtle accent-lavender"
+              />
+              <span>
+                <span className="block font-medium text-primary">Activer l&apos;assistant IA</span>
+                <span className="mt-1 block text-xs text-secondary">
+                  Permet d&apos;analyser des offres, comparer votre CV, générer des lettres de
+                  motivation et préparer vos entretiens. Un consentement explicite sera demandé
+                  avant chaque envoi de données. Vos données restent chiffrées au repos.
+                </span>
+              </span>
+            </label>
+
+            {aiConsent && (
+              <div className="space-y-4 border-t border-subtle pt-4">
+                {/* Choix du fournisseur */}
+                <label className="block text-sm">
+                  <span className="mb-1.5 block text-secondary">Fournisseur IA</span>
+                  <select
+                    value={aiProvider}
+                    onChange={(e) => setAiProvider(e.target.value as "local" | "cloud")}
+                    className={inputClass}
+                  >
+                    <option value="local">
+                      Local (dans le navigateur — aucune donnée envoyée)
+                    </option>
+                    <option value="cloud">Cloud (API externe — données anonymisées)</option>
+                  </select>
+                </label>
+
+                {/* Disponibilité */}
+                {aiAvailable && (
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <Badge variant={aiAvailable.local ? "success" : "default"}>
+                      {aiAvailable.local ? "Mode local disponible" : "Mode local indisponible"}
+                    </Badge>
+                    <Badge variant={aiAvailable.cloud ? "success" : "warning"}>
+                      {aiAvailable.cloud ? "Mode cloud configuré" : "Mode cloud non configuré"}
+                    </Badge>
+                  </div>
+                )}
+
+                {/* Configuration cloud */}
+                {aiProvider === "cloud" && (
+                  <div className="space-y-3">
+                    <label className="block text-sm">
+                      <span className="mb-1.5 block text-secondary">Clé API</span>
+                      <input
+                        type="password"
+                        value={aiApiKey}
+                        onChange={(e) => setAiApiKey(e.target.value)}
+                        placeholder="sk-..."
+                        className={inputClass}
+                        autoComplete="off"
+                      />
+                      <span className="mt-1 block text-xs text-secondary">
+                        Stockée chiffrée. Utilisée uniquement pour appeler l&apos;API. Ne la
+                        partagez jamais.
+                      </span>
+                    </label>
+                    <label className="block text-sm">
+                      <span className="mb-1.5 block text-secondary">Modèle (optionnel)</span>
+                      <input
+                        type="text"
+                        value={aiModel}
+                        onChange={(e) => setAiModel(e.target.value)}
+                        placeholder="gpt-4o-mini (par défaut)"
+                        className={inputClass}
+                      />
+                    </label>
+                  </div>
+                )}
+
+                {/* Avertissement confidentialité */}
+                <div className="flex items-start gap-2 rounded-lg border border-lavender/25 bg-lavender/5 p-3 text-xs text-secondary">
+                  <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-lavender" aria-hidden />
+                  <span>
+                    L&apos;IA reçoit uniquement le texte que vous choisissez d&apos;analyser (offre,
+                    CV, profil). Vos candidatures, documents et clés de chiffrement ne sont JAMAIS
+                    envoyés. En mode cloud, les données sont anonymisées (emails, téléphones
+                    retirés).
+                  </span>
                 </div>
               </div>
             )}
