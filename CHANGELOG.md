@@ -3,63 +3,123 @@
 Toutes les modifications notables de Velora sont documentées dans ce fichier.
 
 Le format est inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le projet
-adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
+adhere au [Versionnage Semantique](https://semver.org/lang/fr/).
 
-## [Non publié]
+## [Non publie]
 
-### Ajouté
+### Ajoute — Phase 2 : Intelligence (IA opt-in)
 
-- **Design system Velora** : tokens prune-noir / rose poudré / lavande, typographie
-  Cormorant Garamond (titres) + Inter (interface), cartes arrondies 20–28 px, ombres
-  douces, dégradé carte mise en avant, composants UI (Card, Badge, Button).
-- **Shell applicatif** : sidebar gauche (Mon espace / Ma carrière / Mon coffre-fort),
-  header (date, statut coffre, verrouillage, notifications, profil), barre de navigation
-  inférieure responsive sur mobile.
-- **Dashboard « Aujourd'hui »** : salutation personnalisée, carte principale en dégradé
-  (candidatures actives, entretiens, réponses positives, relances), graphique circulaire
-  du pipeline (Recharts), carte « Votre journée », section « À venir », état vide élégant.
-- **Mode démonstration** : données fictives clairement identifiées (bandeau « Mode
-  démonstration — données fictives »), entreprises fictives, emails `.invalid`, jamais
-  persistées dans IndexedDB.
-- **PWA** : enregistrement du service worker, manifest, icônes générées (192/512/maskable).
-- **État UI (Zustand)** : contrat de sécurité — jamais de clé ni de phrase dans le store.
+- **Fondations IA** (Lot 6) : consentement explicite avec modal de preview, service abstrait
+  cloud (OpenAI-compatible : OpenAI, Anthropic, endpoint custom) / local (WebLLM, stub),
+  anonymisation des donnees avant envoi, page de controle `/ia`, toggle dans les parametres,
+  banniere d'activation, hook `useAi()`, composant `AiActionButton` reutilisable.
+- **Analyse d'offre IA** (Lot 7.1) : depuis `/offres`, extraction des competences, contraintes,
+  localisation, salaire, type de contrat ; pre-remplissage automatique du formulaire de
+  candidature depuis l'analyse.
+- **Comparaison CV ↔ Offre IA** (Lot 7.2) : depuis `/documents`, bouton « Comparer IA » sur les
+  CV, extraction du texte du CV chiffre + collage de l'offre, score de correspondance
+  (barre coloree), competences presentes/manquantes/transversales, points forts, suggestions.
+- **Generation de lettre de motivation IA** (Lot 7.3) : depuis `/candidatures`, bouton
+  « Generer une lettre (IA) » dans le formulaire d'edition, selection du CV chiffre,
+  brouillon editable + copie, avertissement « informations reelles uniquement ».
+- **Preparation d'entretien IA** (Lot 7.4) : depuis `/entretien`, bouton « Prepa IA » sur chaque
+  fiche, questions par categorie (technique/comportementale/entreprise/motivation) avec
+  suggestions de reponses depliables, questions a poser au recruteur, conseils generaux.
+- **Securite IA** : `AiConsentModal` (preview avant chaque envoi), verification du consentement
+  (redirection `/parametres#ia` si absent), `anonymizeText()` avant envoi cloud, gestion des
+  erreurs avec toasts, aucune cle API stockee en clair (chiffree dans le vault).
 
-### Sécurité
+### Ajoute — Phase 1 : Fonctionnalites avancees
 
-- **CI corrigée après premier run** : CodeQL activé uniquement pour le propriétaire
-  du dépôt (Advanced Security indisponible sinon, échec gracieux) ; audit des
-  dépendances scindé en **production (bloquant ≥ high)** et **dev (informatif)** ;
-  audit des permissions des workflows durci (regex YAML, faux positifs corrigés).
-- **Supply chain** : override `postcss` → 8.5.31 (corrige 2 vulnérabilités dont 1 HIGH
-  dans le bundle Next.js livré) ; `npm audit --omit=dev` = **0 vulnérabilité**.
-- CSP test local assouplie uniquement pour les scripts inline d'hydratation Next.js
-  (artefact du serveur de test) ; CSP de production stricte vérifiée par test E2E
-  (`public/_headers` : `script-src 'self'` sans `unsafe-inline`).
-- Test E2E : aucun appel réseau externe non documenté au chargement.
+- **Tableau avance** : vue Kanban avec drag & drop (@dnd-kit), recherche instantanee,
+  filtres par statut, bascule Kanban/Liste.
+- **Mode demo** : donnees fictives clairement identifiees (tag `__demo__`, bandeau « Mode
+  demonstration »), entreprises fictives, emails `.invalid`, nettoyage automatique a la
+  desactivation, detection des donnees demo legacy (tag `demo`).
+- **Chronologie** : historique des evenements par candidature (creee, modifiee, changement
+  de statut, relance, entretien).
+- **Notifications locales** : rappels de relances et d'entretiens via l'API Notification.
+- **Auto-lock** : verrouillage automatique apres inactivite (15 min par defaut, configurable),
+  prolongement sur activite utilisateur, `forceLock()` avec redirection propre.
+- **Relances** : suivi des relances par candidature avec dates et notes.
+- **Page Offres** : gestion des offres sauvegardees avec lien vers candidature.
+- **Parametres** : profil, securite (delai auto-lock, changement de phrase), objectifs,
+  section IA dediee.
+- **Journal de recherche** : notes personnelles chiffrees, liees au parcours.
+- **Preparation d'entretiens** : fiches par candidature, questions, notes, checklist.
+- **Palette de commandes** : recherche rapide (Cmd+K) dans toute l'app.
+- **Annulation (undo)** : restauration des suppressions recentes avec toast.
+- **Skeletons** : etats de chargement elegants sur toutes les pages.
+- **Raccourcis clavier** : navigation rapide, actions courantes.
+- **Onboarding** : parcours de premier lancement (creation coffre ou mode demo).
 
-### Ajouté
+### Ajoute — Phase 0 : Vault chiffre + CRUD
 
-- Architecture initiale du dépôt : gouvernance (README, CONTRIBUTING, SECURITY, CODEOWNERS),
-  configuration TypeScript strict, ESLint, Prettier, Tailwind CSS.
-- Workflows CI GitHub Actions : `ci.yml`, `security.yml`, `e2e.yml`, `release.yml`.
-- Documentation : architecture, feuille de route, déploiement Cloudflare, modèle de menace
-  (STRIDE), cryptographie, décisions de sécurité (ADR).
-- Design system Velora (tokens prune-noir / rose poudré / lavande).
+- **Coffre-fort chiffre** : AES-256-GCM (Web Crypto), Argon2id (m=64MiB, t=3, p=1),
+  cle maitresse non-extractable en session, KEK derivee de la phrase secretaire,
+  phrase jamais stockee, verrouillage manuel + auto.
+- **Candidatures CRUD** : creation, edition, suppression avec confirmation inline,
+  statuts (brouillon → envoyee → en_attente → entretien → offre → acceptee/refusee/abandonnee),
+  dates avec heure (creee/modifiee), tags, salaire, source, contact recruteur.
+- **Documents chiffres** : upload PDF/DOC/DOCX/TXT/PNG/JPG (max 10 Mo), stockage chiffre
+  dans IndexedDB, telechargement, suppression, detection de type par extension.
+- **Sauvegardes `.velora`** : export archive chiffree (AES-256-GCM), manifeste SHA-256,
+  import avec verification d'integrite, mode remplacer/fusionner.
+- **Calendrier** : evenements (entretien/relance/echeance/preparation/personnel),
+  export ICS (RFC 5545).
+- **Analyses** : statistiques locales (taux de reponse, taux d'entretien, delai moyen,
+  par source, par type, candidatures par semaine).
 
-### Sécurité
+### Securite
 
-- Politique CSP restrictive, en-têtes de sécurité, `nosniff`, HSTS, `Referrer-Policy`.
-- Gitleaks + CodeQL + `npm audit` en CI ; actions épinglées par SHA ; permissions minimales.
+- **CSP inline-script hashes** : script postbuild (`scripts/update-csp-hashes.mjs`) extrait
+  les scripts inline de `out/*.html`, calcule les hashes SHA-256, les injecte dans
+  `public/_headers`. Plus de `'unsafe-inline'` ni `'unsafe-eval'`.
+- **Service worker** : network-first pour les navigations HTML, cache-first uniquement pour
+  les assets immutables (`/_next/static/*`).
+- **Fix auto-lock F5** : `touchActivity()` au deverrouillage, `autoLockMs` charge depuis les
+  parametres chiffres, `getState()` pour `lastActivityAt` frais dans `visibilitychange`.
+- **Fix nettoyage mode demo** : detection des donnees demo legacy (tag `demo`), nettoyage
+  des 3 marqueurs (`__demo__`, `demo`, entreprises fictives).
+- **Fix page blanche au verrouillage** : `forceLock()` (session=null + sync Zustand +
+  redirection propre) au lieu de `lock()+reload()`.
+- **CI** : workflows `ci.yml`, `security.yml`, `e2e.yml`, `release.yml`, `deploy.yml`,
+  `deploy-preview.yml`. CodeQL, Gitleaks, `npm audit` (bloquant >= high en prod).
+- **Supply chain** : lockfile committe, actions epinglees par SHA, permissions minimales.
+
+### Corrige
+
+- **Page blanche au verrouillage** : le `VaultGate` affichait une page blanche au lieu de
+  rediriger vers l'ecran de deverrouillage. Remplace par `forceLock()` avec redirection
+  controlee (`location.replace("/")` ou `reload()`).
+- **Auto-lock immediat apres F5** : le timer n'etait pas reinitialise au rechargement.
+  Correction : `touchActivity()` au unlock, chargement de `autoLockMs` depuis les settings
+  chiffres, utilisation de `getState()` pour la fraicheur de `lastActivityAt`.
+- **Donnees demo non nettoyees** : les anciennes donnees demo (tag `demo`) n'etaient pas
+  detectees par `clearDemoData()`. Ajout de `LEGACY_DEMO_TAG` et `DEMO_COMPANIES`.
+- **Deploiement Cloudflare** : erreur `pages-manifest.json` ENOENT (OpenNext vs Pages).
+  Correction : Cloudflare **Pages** (pas Workers), build `npm run build`, output `out`.
+- **Ecran blanc intermittent** : CSP `script-src 'self'` bloquait les scripts inline de
+  Next.js (`output: "export"`). Correction : hashes SHA-256 dans `public/_headers`.
+
+### Ajoute — Fondation (PR #2)
+
+- **Design system Velora** : tokens prune-noir / rose poudre / lavande, typographie
+  Cormorant Garamond (titres) + Inter (interface), cartes arrondies 20-28 px.
+- **Shell applicatif** : sidebar, header, navigation mobile.
+- **Dashboard « Aujourd'hui »** : vue personnalisee avec KPIs.
+- **PWA** : service worker, manifest, icones.
+- **Etat UI (Zustand)** : contrat de securite — jamais de cle ni de phrase dans le store.
 
 ---
 
-## [0.1.0] — À venir (MVP local-first)
+## [0.1.0] — A venir (MVP local-first)
 
-*Critères d'acceptation : voir le milestone
+*Criteres d'acceptation : voir le milestone
 [v0.1.0 — MVP local-first](https://github.com/YFA-20/Caryon/milestones).*
 
-- Design system, interface responsive, mode démonstration.
-- Coffre-fort local chiffré (AES-256-GCM, Argon2id).
-- Création et modification des candidatures (Kanban + tableau).
-- Documents chiffrés, recherche, sauvegarde chiffrée.
-- Tests essentiels, déploiement Cloudflare.
+- Design system, interface responsive, mode demonstration.
+- Coffre-fort local chiffre (AES-256-GCM, Argon2id).
+- Creation et modification des candidatures (Kanban + tableau).
+- Documents chiffres, recherche, sauvegarde chiffree.
+- Tests essentiels, deploiement Cloudflare.

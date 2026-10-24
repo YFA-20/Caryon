@@ -108,6 +108,18 @@ Tout enregistrement chiffré suit un format versionné sérialisé (JSON binaire
 - ❌ Aucune promesse de « zero knowledge » pour la sync tant que non vérifiée (Phase 4).
 - ❌ Aucune récupération secrète côté serveur.
 
+## 8bis. CSP et scripts inline (Next.js `output: "export"`)
+
+- Next.js en mode export statique injecte **6 scripts inline** dans `index.html` /
+  `404.html` (payload RSC + hydratation React).
+- La CSP `script-src 'self'` bloquait ces scripts → ecran blanc (hydratation echouee).
+- **Solution** : script postbuild (`scripts/update-csp-hashes.mjs`) :
+  1. Extrait les scripts inline de `out/*.html`.
+  2. Calcule le SHA-256 base64 de chacun.
+  3. Reecrit `out/_headers` avec `script-src 'self' 'sha256-...' ...` (11 hashes).
+- **Aucune** directive `'unsafe-inline'` ni `'unsafe-eval'`.
+- Test unitaire (`tests/unit/csp-hashes.test.ts`) verifie la presence des hashes.
+
 ## 9. Tests cryptographiques
 
 - Vecteurs de test connus (NIST AES-GCM) pour valider l'implémentation.
