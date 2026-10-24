@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Bell, Lock, Unlock } from "lucide-react";
 import { useUiStore } from "@/store/ui-store";
 import { useVaultStore } from "@/store/vault-store";
-import { lock } from "@/lib/vault/vault-service";
+import { forceLock } from "@/lib/vault/vault-service";
 import {
   getNotificationPermission,
   requestNotificationPermission,
@@ -24,7 +24,7 @@ const NOTIFICATION_LABELS: Record<NotificationPermissionState, string> = {
 
 export function Header() {
   const { demoMode, firstName, setDemoMode } = useUiStore();
-  const { status, setStatus } = useVaultStore();
+  const { status } = useVaultStore();
   const unlocked = status === "unlocked";
   const [notifPermission, setNotifPermission] = useState<NotificationPermissionState>(() =>
     getNotificationPermission()
@@ -52,10 +52,7 @@ export function Header() {
   }
 
   function handleLock() {
-    lock();
-    setStatus("locked");
-    // Force le rechargement pour réafficher le portail de déverrouillage
-    window.location.reload();
+    forceLock();
   }
 
   return (

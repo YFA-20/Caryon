@@ -5,7 +5,13 @@ import { FileUp, Lock, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { useVaultStore } from "@/store/vault-store";
-import { vaultExists, unlockVault, createVault, isUnlocked } from "@/lib/vault/vault-service";
+import {
+  vaultExists,
+  unlockVault,
+  createVault,
+  isUnlocked,
+  forceLock,
+} from "@/lib/vault/vault-service";
 import {
   parseBackup,
   restoreVaultFromBackup,
@@ -19,6 +25,12 @@ import {
  * depuis une sauvegarde .velora (nouvel appareil).
  * Si un coffre existe mais est verrouillé : écran de déverrouillage.
  * Si déverrouillé : rend les enfants.
+ *
+ * SÉCURITÉ (fix page blanche) : un guard vérifie périodiquement (toutes les
+ * 5 secondes) que la session est toujours vivante quand le statut est
+ * « unlocked ». Si la session a été effacée (auto-lock, fermeture forcée)
+ * sans que le store Zustand n'ait été notifié, le guard force le retour
+ * au portail de déverrouillage.
  */
 export function VaultGate({ children }: { children: React.ReactNode }) {
   const { status, setStatus } = useVaultStore();
@@ -43,6 +55,21 @@ export function VaultGate({ children }: { children: React.ReactNode }) {
       cancelled = true;
     };
   }, [setStatus]);
+
+  // Guard : vérifie que la session est toujours vivante quand status === "unlocked"
+  useEffect(() => {
+    if (status !== "unlocked") return;
+
+    const guardInterval = setInterval(() => {
+      if (!isUnlocked()) {
+        // La session a été effacée (auto-lock ou autre) mais le store
+        // ne le sait pas encore → forcer le verrouillage propre
+        forceLock();
+      }
+    }, 5000); // Vérification toutes les 5 secondes
+
+    return () => clearInterval(guardInterval);
+  }, [status]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
