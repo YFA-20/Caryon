@@ -13,6 +13,9 @@ import {
   clearDemoData,
   DEMO_TAG,
   DEMO_GOAL_PREFIX,
+  LEGACY_DEMO_TAG,
+  DEMO_COMPANIES,
+  isDemoApplication,
 } from "@/lib/vault/demo-data-service";
 import { listApplications, createApplication } from "@/lib/vault/application-repository";
 import { createGoal, listGoals } from "@/lib/vault/goal-repository";
@@ -287,5 +290,117 @@ describe("clearDemoData", () => {
     expect(result.goals).toBe(0);
     expect(result.journalEntries).toBe(0);
     expect(result.interviewPreps).toBe(0);
+  });
+
+  it("clearDemoData supprime les données avec l'ancien tag 'demo' (legacy)", async () => {
+    await createApplication({
+      company: "Legacy Demo Corp",
+      position: "Dev",
+      type: "cdi",
+      status: "brouillon",
+      location: "",
+      remote: false,
+      salary: "",
+      source: "",
+      contactName: "",
+      contactEmail: "",
+      notes: "",
+      priority: "normale",
+      tags: [LEGACY_DEMO_TAG],
+    });
+    await createApplication({
+      company: "Ma vraie entreprise",
+      position: "Vrai poste",
+      type: "cdi",
+      status: "envoyee",
+      location: "",
+      remote: false,
+      salary: "",
+      source: "",
+      contactName: "",
+      contactEmail: "",
+      notes: "",
+      priority: "normale",
+      tags: [],
+    });
+
+    const result = await clearDemoData();
+
+    expect(result.applications).toBe(1);
+    const apps = await listApplications();
+    expect(apps.length).toBe(1);
+    expect(apps[0]!.company).toBe("Ma vraie entreprise");
+  });
+
+  it("clearDemoData supprime les candidatures des entreprises démo connues (legacy)", async () => {
+    for (const company of DEMO_COMPANIES) {
+      await createApplication({
+        company,
+        position: "Poste test",
+        type: "cdi",
+        status: "brouillon",
+        location: "",
+        remote: false,
+        salary: "",
+        source: "",
+        contactName: "",
+        contactEmail: "",
+        notes: "",
+        priority: "normale",
+        tags: [],
+      });
+    }
+    await createApplication({
+      company: "Entreprise réelle SARL",
+      position: "Vrai poste",
+      type: "cdi",
+      status: "envoyee",
+      location: "",
+      remote: false,
+      salary: "",
+      source: "",
+      contactName: "",
+      contactEmail: "",
+      notes: "",
+      priority: "normale",
+      tags: [],
+    });
+
+    const result = await clearDemoData();
+
+    expect(result.applications).toBe(DEMO_COMPANIES.size);
+    const apps = await listApplications();
+    expect(apps.length).toBe(1);
+    expect(apps[0]!.company).toBe("Entreprise réelle SARL");
+  });
+
+  it("isDemoApplication détecte le nouveau tag, l'ancien tag, et les entreprises connues", () => {
+    expect(isDemoApplication({ tags: [DEMO_TAG], company: "Inconnue" })).toBe(true);
+    expect(isDemoApplication({ tags: [LEGACY_DEMO_TAG], company: "Inconnue" })).toBe(true);
+    expect(isDemoApplication({ tags: [], company: "Atelier Nova" })).toBe(true);
+    expect(isDemoApplication({ tags: [], company: "Atelier Nova (fictif)" })).toBe(true);
+    expect(isDemoApplication({ tags: [], company: "Ma vraie entreprise" })).toBe(false);
+    expect(isDemoApplication({ tags: ["react"], company: "Ma vraie entreprise" })).toBe(false);
+  });
+
+  it("hasExistingData ignore les données legacy (ancien tag + entreprises connues)", async () => {
+    await createApplication({
+      company: "Atelier Nova",
+      position: "Dev",
+      type: "cdi",
+      status: "brouillon",
+      location: "",
+      remote: false,
+      salary: "",
+      source: "",
+      contactName: "",
+      contactEmail: "",
+      notes: "",
+      priority: "normale",
+      tags: [LEGACY_DEMO_TAG],
+    });
+
+    const result = await hasExistingData();
+    expect(result).toBe(false);
   });
 });
