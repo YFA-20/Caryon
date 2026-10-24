@@ -7,6 +7,7 @@ import { Sidebar } from "./sidebar";
 import { PwaRegister } from "@/components/pwa-register";
 import { CommandPalette } from "@/components/common/command-palette";
 import { ToastContainer } from "@/components/common/toast-container";
+import { DemoBanner } from "@/components/common/demo-banner";
 import { OnboardingWizard } from "@/components/onboarding/onboarding-wizard";
 import { useAutoLock } from "@/hooks/use-auto-lock";
 import { useNotificationScheduler } from "@/hooks/use-notification-scheduler";
@@ -30,6 +31,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <Sidebar />
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         <Header />
+        <DemoBanner />
         <main className="flex-1 pb-24 md:pb-10">{children}</main>
       </div>
       <MobileNav />

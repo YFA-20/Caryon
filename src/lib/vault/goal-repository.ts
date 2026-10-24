@@ -125,6 +125,7 @@ export async function getSettings(): Promise<VaultSettings> {
       theme: "dark",
       notificationsEnabled: true,
       onboardingCompleted: false,
+      demoMode: false,
       updatedAt: new Date().toISOString(),
     };
   }
@@ -141,6 +142,7 @@ export async function getSettings(): Promise<VaultSettings> {
           theme: "dark",
           notificationsEnabled: true,
           onboardingCompleted: false,
+          demoMode: false,
           updatedAt: new Date().toISOString(),
         };
   } catch {
@@ -151,6 +153,7 @@ export async function getSettings(): Promise<VaultSettings> {
       theme: "dark",
       notificationsEnabled: true,
       onboardingCompleted: false,
+      demoMode: false,
       updatedAt: new Date().toISOString(),
     };
   }
