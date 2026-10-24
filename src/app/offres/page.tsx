@@ -8,6 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { parseOfferText, type ParsedOffer } from "@/lib/utils/offer-parser";
+import { analyzeOfferWithAi, analysisToPrefill, type OfferAnalysis } from "@/lib/ai/offer-analyzer";
+import { AiActionButton } from "@/components/ai/ai-action-button";
+import { toastError, toastSuccess } from "@/store/toast-store";
+import { useRouter } from "next/navigation";
 import { APPLICATION_TYPE_LABELS, type ApplicationType } from "@/lib/schema/application";
 
 const FIELD_LABELS: Record<string, string> = {
@@ -25,12 +29,53 @@ export default function OffresPage() {
   const [sourceUrl, setSourceUrl] = useState("");
   const [parsed, setParsed] = useState<ParsedOffer | null>(null);
   const [edited, setEdited] = useState<ParsedOffer | null>(null);
+  const [aiAnalysis, setAiAnalysis] = useState<OfferAnalysis | null>(null);
+  const router = useRouter();
 
   function handleParse() {
     if (!rawText.trim()) return;
     const result = parseOfferText(rawText, sourceUrl.trim());
     setParsed(result);
     setEdited(result);
+    setAiAnalysis(null); // Reset l'analyse IA précédente
+  }
+
+  async function handleAiAnalyze() {
+    if (!rawText.trim()) return;
+    try {
+      const result = await analyzeOfferWithAi(rawText);
+      if (result) {
+        setAiAnalysis(result);
+        // Fusionne avec le résultat local : l'IA enrichit, le local corrige
+        const prefill = analysisToPrefill(result);
+        setEdited((prev) =>
+          prev
+            ? {
+                ...prev,
+                company: prefill.company || prev.company,
+                position: prefill.position || prev.position,
+                type: (prefill.type ?? prev.type) as ApplicationType | "",
+                location: prefill.location || prev.location,
+                remote: prefill.remote || prev.remote,
+                salary: prefill.salary || prev.salary,
+                source: prev.source || prefill.source,
+              }
+            : null
+        );
+        toastSuccess("Offre analysée par l'IA — vérifiez les champs enrichis.");
+      } else {
+        toastError(
+          "L'IA n'a pas pu extraire d'informations structurées. Utilisez l'analyse locale."
+        );
+      }
+    } catch (err) {
+      console.error("[offres] Erreur analyse IA:", err);
+      toastError(err instanceof Error ? err.message : "Erreur lors de l'analyse IA.");
+    }
+  }
+
+  function handleNeedConsent() {
+    router.push("/parametres#ia");
   }
 
   function handlePaste() {
@@ -110,13 +155,98 @@ export default function OffresPage() {
               className={inputClass}
             />
           </div>
-          <div className="flex justify-end">
+          <div className="flex flex-wrap justify-end gap-3">
+            <AiActionButton
+              task="analyze_offer"
+              label="Analyse IA avancée"
+              dataPreview={[
+                {
+                  label: "Texte de l'offre",
+                  value: rawText.slice(0, 500) + (rawText.length > 500 ? "…" : ""),
+                },
+              ]}
+              disabled={!rawText.trim()}
+              onRun={handleAiAnalyze}
+              onNeedConsent={handleNeedConsent}
+            />
             <Button onClick={handleParse} disabled={!rawText.trim()}>
               <Wand2 className="h-4 w-4" aria-hidden />
-              Analyser l&apos;offre
+              Analyser localement (sans IA)
             </Button>
           </div>
         </Card>
+
+        {aiAnalysis && (
+          <Card className="space-y-4 border-lavender/30 bg-lavender/5">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-lavender" aria-hidden />
+              <CardTitle className="text-lg">Analyse IA</CardTitle>
+              <Badge variant="lavender">IA</Badge>
+            </div>
+            <CardDescription>
+              L&apos;IA a extrait des informations complémentaires. Vérifiez-les avant utilisation.
+            </CardDescription>
+            <div className="grid gap-3 md:grid-cols-2">
+              {aiAnalysis.competencesRequises.length > 0 && (
+                <div className="rounded-xl border border-subtle bg-surface p-3">
+                  <p className="text-xs font-medium uppercase tracking-wider text-secondary">
+                    Compétences requises
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {aiAnalysis.competencesRequises.map((c, i) => (
+                      <Badge key={i} variant="default">
+                        {c}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {aiAnalysis.competencesSouhaitees.length > 0 && (
+                <div className="rounded-xl border border-subtle bg-surface p-3">
+                  <p className="text-xs font-medium uppercase tracking-wider text-secondary">
+                    Compétences souhaitées
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {aiAnalysis.competencesSouhaitees.map((c, i) => (
+                      <Badge key={i} variant="lavender">
+                        {c}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {aiAnalysis.avantages.length > 0 && (
+                <div className="rounded-xl border border-subtle bg-surface p-3">
+                  <p className="text-xs font-medium uppercase tracking-wider text-secondary">
+                    Avantages
+                  </p>
+                  <ul className="mt-2 space-y-1 text-sm text-primary">
+                    {aiAnalysis.avantages.map((a, i) => (
+                      <li key={i}>• {a}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {aiAnalysis.niveauExperience && (
+                <div className="rounded-xl border border-subtle bg-surface p-3">
+                  <p className="text-xs font-medium uppercase tracking-wider text-secondary">
+                    Niveau d&apos;expérience
+                  </p>
+                  <p className="mt-2 text-sm text-primary">{aiAnalysis.niveauExperience}</p>
+                </div>
+              )}
+            </div>
+            {aiAnalysis.motsCles.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {aiAnalysis.motsCles.map((m, i) => (
+                  <Badge key={i} variant="success">
+                    {m}
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </Card>
+        )}
 
         {parsed && edited && (
           <Card className="space-y-6">

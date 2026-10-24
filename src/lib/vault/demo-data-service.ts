@@ -10,13 +10,27 @@
  * - Un marqueur `demoMode` dans VaultSettings identifie le mode.
  * - La suppression du mode démo efface toutes les données (wipe + re-seed optionnel).
  */
-import { createApplication, listApplications } from "./application-repository";
-import { createEvent, listEvents } from "./calendar-repository";
-import { createGoal, listGoals } from "./goal-repository";
-import { createJournalEntry, listJournalEntries } from "./journal-repository";
-import { createDocument } from "./document-repository";
-import { createInterviewPrep } from "./interview-repository";
+import { createApplication, listApplications, deleteApplication } from "./application-repository";
+import { createEvent, listEvents, deleteEvent } from "./calendar-repository";
+import { createGoal, listGoals, deleteGoal } from "./goal-repository";
+import { createJournalEntry, listJournalEntries, deleteJournalEntry } from "./journal-repository";
+import { createDocument, listDocuments, deleteDocument } from "./document-repository";
+import {
+  createInterviewPrep,
+  listInterviewPreps,
+  deleteInterviewPrep,
+} from "./interview-repository";
 import type { ApplicationStatus, ApplicationType } from "@/lib/schema/application";
+
+// ---------------------------------------------------------------------------
+// Marqueur de données démo
+// ---------------------------------------------------------------------------
+
+/** Tag ajouté à toutes les entités créées en mode démo (permet de les nettoyer). */
+export const DEMO_TAG = "__demo__";
+
+/** Préfixe ajouté aux titres des objectifs démo. */
+export const DEMO_GOAL_PREFIX = "[DÉMO] ";
 
 // ---------------------------------------------------------------------------
 // Helpers de génération déterministe (dates relatives à "maintenant")
@@ -245,7 +259,7 @@ export async function seedDemoData(): Promise<DemoSeedResult> {
       appliedAt: seed.appliedAt || undefined,
       notes: seed.notes,
       priority: "normale",
-      tags: seed.tags,
+      tags: [...seed.tags, DEMO_TAG],
     });
     createdApps.push({ id: created.id, company: seed.company });
     result.applications++;
@@ -293,7 +307,7 @@ export async function seedDemoData(): Promise<DemoSeedResult> {
       type: doc.type,
       mimeType: "application/pdf",
       content: makePdfContent(doc.text),
-      tags: ["demo"],
+      tags: [DEMO_TAG],
       applicationId: doc.appId,
     });
     result.documents++;
@@ -398,7 +412,7 @@ export async function seedDemoData(): Promise<DemoSeedResult> {
 
   for (const g of demoGoals) {
     await createGoal({
-      title: g.title,
+      title: DEMO_GOAL_PREFIX + g.title,
       description: g.description,
       metric: g.metric,
       target: g.target,
@@ -448,7 +462,7 @@ export async function seedDemoData(): Promise<DemoSeedResult> {
       title: j.title,
       content: j.content,
       mood: j.mood,
-      tags: ["demo"],
+      tags: [DEMO_TAG],
       applicationId: j.appId || "",
     });
     result.journalEntries++;
@@ -478,5 +492,108 @@ export async function hasExistingData(): Promise<boolean> {
     listGoals(),
     listJournalEntries(),
   ]);
-  return apps.length > 0 || events.length > 0 || goals.length > 0 || journal.length > 0;
+  // Identifie les candidatures démo
+  const demoAppIds = new Set(apps.filter((a) => a.tags.includes(DEMO_TAG)).map((a) => a.id));
+  // Ignore les données démo (taggées DEMO_TAG ou liées à des candidatures démo)
+  const realApps = apps.filter((a) => !a.tags.includes(DEMO_TAG));
+  const realGoals = goals.filter((g) => !g.title.startsWith(DEMO_GOAL_PREFIX));
+  const realJournal = journal.filter((j) => !j.tags.includes(DEMO_TAG));
+  const realEvents = events.filter((e) => !e.applicationId || !demoAppIds.has(e.applicationId));
+  return (
+    realApps.length > 0 || realEvents.length > 0 || realGoals.length > 0 || realJournal.length > 0
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Nettoyage des données démo
+// ---------------------------------------------------------------------------
+
+export interface DemoCleanupResult {
+  applications: number;
+  documents: number;
+  events: number;
+  goals: number;
+  journalEntries: number;
+  interviewPreps: number;
+}
+
+/**
+ * Supprime TOUTES les données créées en mode démonstration.
+ *
+ * Identifie les données démo par :
+ * - Le tag DEMO_TAG sur les candidatures, documents, entrées de journal
+ * - Le préfixe [DÉMO] sur les titres d'objectifs
+ * - Les événements liés à des candidatures démo
+ * - Les fiches de préparation liées à des candidatures démo
+ *
+ * SÉCURITÉ : ne supprime JAMAIS les données qui n'ont pas le tag/préfixe démo.
+ * Si l'utilisateur a modifié une entité démo (retiré le tag), elle est conservée.
+ */
+export async function clearDemoData(): Promise<DemoCleanupResult> {
+  const result: DemoCleanupResult = {
+    applications: 0,
+    documents: 0,
+    events: 0,
+    goals: 0,
+    journalEntries: 0,
+    interviewPreps: 0,
+  };
+
+  // 1. Candidatures démo
+  const apps = await listApplications();
+  const demoAppIds = new Set<string>();
+  for (const app of apps) {
+    if (app.tags.includes(DEMO_TAG)) {
+      demoAppIds.add(app.id);
+      await deleteApplication(app.id);
+      result.applications++;
+    }
+  }
+
+  // 2. Documents démo
+  const docs = await listDocuments();
+  for (const doc of docs) {
+    if (doc.tags.includes(DEMO_TAG)) {
+      await deleteDocument(doc.id);
+      result.documents++;
+    }
+  }
+
+  // 3. Événements liés à des candidatures démo
+  const events = await listEvents();
+  for (const ev of events) {
+    if (ev.applicationId && demoAppIds.has(ev.applicationId)) {
+      await deleteEvent(ev.id);
+      result.events++;
+    }
+  }
+
+  // 4. Objectifs démo (préfixe [DÉMO])
+  const goals = await listGoals();
+  for (const goal of goals) {
+    if (goal.title.startsWith(DEMO_GOAL_PREFIX)) {
+      await deleteGoal(goal.id);
+      result.goals++;
+    }
+  }
+
+  // 5. Entrées de journal démo
+  const journalEntries = await listJournalEntries();
+  for (const entry of journalEntries) {
+    if (entry.tags.includes(DEMO_TAG)) {
+      await deleteJournalEntry(entry.id);
+      result.journalEntries++;
+    }
+  }
+
+  // 6. Fiches de préparation liées à des candidatures démo
+  const preps = await listInterviewPreps();
+  for (const prep of preps) {
+    if (demoAppIds.has(prep.applicationId)) {
+      await deleteInterviewPrep(prep.id);
+      result.interviewPreps++;
+    }
+  }
+
+  return result;
 }

@@ -16,7 +16,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getSettings, saveSettings, wipeAllData } from "@/lib/vault/goal-repository";
-import { seedDemoData, hasExistingData, type DemoSeedResult } from "@/lib/vault/demo-data-service";
+import {
+  seedDemoData,
+  hasExistingData,
+  clearDemoData,
+  type DemoSeedResult,
+  type DemoCleanupResult,
+} from "@/lib/vault/demo-data-service";
 import { toastSuccess, toastError } from "@/store/toast-store";
 import { useVaultStore } from "@/store/vault-store";
 import { useUiStore } from "@/store/ui-store";
@@ -49,6 +55,8 @@ export default function ParametresPage() {
   const [demoMode, setDemoMode] = useState(false);
   const [demoSeeding, setDemoSeeding] = useState(false);
   const [demoConfirm, setDemoConfirm] = useState(false);
+  const [demoDisableConfirm, setDemoDisableConfirm] = useState(false);
+  const [demoCleaning, setDemoCleaning] = useState(false);
   const [hasData, setHasData] = useState(false);
 
   // IA (Phase 2)
@@ -152,11 +160,41 @@ export default function ParametresPage() {
         setDemoSeeding(false);
       }
     } else {
-      // Desactivation : on desactive le flag, les donnees restent (l'utilisateur peut les supprimer)
+      // Désactivation : demander confirmation pour supprimer les données démo
+      setDemoDisableConfirm(true);
+    }
+  }
+
+  async function handleDemoDisable(cleanup: boolean) {
+    setDemoDisableConfirm(false);
+    if (cleanup) {
+      setDemoCleaning(true);
+      try {
+        const result: DemoCleanupResult = await clearDemoData();
+        await saveSettings({ demoMode: false });
+        setDemoMode(false);
+        const total =
+          result.applications +
+          result.documents +
+          result.events +
+          result.goals +
+          result.journalEntries +
+          result.interviewPreps;
+        toastSuccess(`Mode démonstration désactivé. ${total} données fictives supprimées.`);
+      } catch (err) {
+        console.error("[parametres] Erreur nettoyage demo:", err);
+        toastError("Erreur lors du nettoyage des données de démonstration.");
+      } finally {
+        setDemoCleaning(false);
+      }
+    } else {
+      // Désactiver sans supprimer (les données restent, l'utilisateur peut les supprimer manuellement)
       try {
         await saveSettings({ demoMode: false });
         setDemoMode(false);
-        toastSuccess("Mode démonstration désactivé.");
+        toastSuccess(
+          "Mode démonstration désactivé. Les données fictives sont conservées (vous pouvez les supprimer manuellement)."
+        );
       } catch (err) {
         console.error("[parametres] Erreur désactivation demo:", err);
         toastError("Erreur lors de la désactivation.");
@@ -315,6 +353,40 @@ export default function ParametresPage() {
                     Annuler
                   </Button>
                 </div>
+              </div>
+            )}
+
+            {demoDisableConfirm && (
+              <div className="mt-3 space-y-2 rounded-lg border border-danger/30 bg-danger/5 p-3">
+                <p className="text-xs text-danger">
+                  <strong>Désactiver le mode démonstration ?</strong> Les données fictives
+                  (candidatures, documents, événements, objectifs, journal) peuvent être supprimées
+                  automatiquement.
+                </p>
+                {demoCleaning ? (
+                  <div className="flex items-center gap-2 text-xs text-secondary">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                    Suppression des données de démonstration…
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="border border-danger/30 text-danger hover:bg-danger/10"
+                      onClick={() => handleDemoDisable(true)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                      Supprimer les données fictives
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => handleDemoDisable(false)}>
+                      Garder les données
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setDemoDisableConfirm(false)}>
+                      Annuler
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </div>
