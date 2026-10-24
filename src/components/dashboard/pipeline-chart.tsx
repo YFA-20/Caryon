@@ -1,10 +1,8 @@
 "use client";
 
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import type { ApplicationStatus } from "@/lib/schema/application";
+import type { Application, ApplicationStatus } from "@/lib/schema/application";
 import { APPLICATION_STATUS_LABELS } from "@/lib/schema/application";
-import { pipelineBreakdown } from "@/lib/demo/demo-data";
-import type { Application } from "@/lib/schema/application";
 
 const COLORS: Record<ApplicationStatus, string> = {
   brouillon: "#BBA8B5",
@@ -17,6 +15,28 @@ const COLORS: Record<ApplicationStatus, string> = {
   refusee: "#D98A8A",
   abandonnee: "#6E5A68",
 };
+
+const ALL_STATUSES: ApplicationStatus[] = [
+  "brouillon",
+  "a_envoyer",
+  "envoyee",
+  "en_attente",
+  "entretien",
+  "offre_recue",
+  "acceptee",
+  "refusee",
+  "abandonnee",
+];
+
+/** Répartition des candidatures par statut (statuts présents uniquement). */
+export function pipelineBreakdown(
+  apps: Application[]
+): { status: ApplicationStatus; count: number }[] {
+  return ALL_STATUSES.map((status) => ({
+    status,
+    count: apps.filter((a) => a.status === status).length,
+  })).filter((s) => s.count > 0);
+}
 
 interface PipelineChartProps {
   applications: Application[];

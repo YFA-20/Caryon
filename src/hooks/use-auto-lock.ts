@@ -17,15 +17,18 @@ const ACTIVITY_EVENTS: (keyof WindowEventMap)[] = [
  * Surveille l'activité utilisateur (pointer, clavier, scroll, touch) et
  * verrouille le coffre si aucune activité pendant `autoLockMs`.
  *
- * SÉCURITÉ RENFORCÉE (fix page blanche + fix timer) :
+ * SÉCURITÉ RENFORCÉE (fix page blanche + fix timer + fix F5/refresh) :
  * - Utilise `forceLock()` qui synchronise le store Zustand + redirige proprement.
  * - Détecte le retour au premier plan (`visibilitychange`) : si le délai
  *   d'inactivité est dépassé pendant que l'onglet était en arrière-plan
  *   (timers throttlés par le navigateur), verrouille immédiatement.
  * - Lit `lastActivityAt` via `getState()` pour avoir la valeur à jour
  *   (évite les stale closures sur le state Zustand).
- * - Au démarrage (status passe à "unlocked"), réinitialise le timer
- *   proprement pour ne pas hériter d'un lastActivityAt ancien.
+ * - Au démarrage (status passe à "unlocked"), réinitialise `lastActivityAt`
+ *   via `touchActivity()` pour ne pas hériter d'un timestamp ancien
+ *   (ex: après un F5, sessionStorage peut contenir une valeur d'avant le refresh).
+ * - `lastActivityAt` est persisté dans `sessionStorage` (voir vault-store.ts)
+ *   pour survivre au F5 sans réinitialiser le timer.
  */
 export function useAutoLock() {
   const { status, autoLockMs, touchActivity } = useVaultStore();
@@ -74,10 +77,13 @@ export function useAutoLock() {
     }
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    // Au démarrage du hook (déverrouillage), s'assurer que le timer
-    // démarre depuis maintenant, pas depuis un lastActivityAt ancien.
-    // Le VaultGate appelle touchActivity() au déverrouillage, mais on
-    // reprogramme le timer ici pour être sûr.
+    // Au démarrage du hook (déverrouillage), réinitialise le timer
+    // pour ne pas hériter d'un lastActivityAt ancien (ex: après F5,
+    // sessionStorage peut contenir une valeur d'avant le refresh).
+    // Le VaultGate appelle aussi touchActivity() au déverrouillage,
+    // mais on le fait ici pour être sûr (évite le verrouillage immédiat
+    // si un visibilitychange se déclenche juste après le montage).
+    touchActivity();
     scheduleLock();
 
     return () => {
@@ -87,5 +93,6 @@ export function useAutoLock() {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [status, autoLockMs, touchActivity]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, autoLockMs]);
 }
