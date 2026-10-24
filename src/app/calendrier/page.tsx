@@ -22,12 +22,15 @@ import {
   listUpcomingEvents,
 } from "@/lib/vault/calendar-repository";
 import { downloadIcs } from "@/lib/utils/ics";
+import { SkeletonEventItem } from "@/components/common/skeleton";
 import {
   CALENDAR_EVENT_TYPE_LABELS,
   type CalendarEvent,
   type CalendarEventType,
 } from "@/lib/schema/calendar";
 import { cn } from "@/lib/utils/cn";
+import { toastUndo, toastError } from "@/store/toast-store";
+import { stripMetaFields } from "@/lib/utils/strip-meta";
 
 const TYPE_BADGE_VARIANT: Record<
   CalendarEventType,
@@ -203,9 +206,22 @@ export default function CalendrierPage() {
 
   async function handleDelete(id: string) {
     setDeletingId(null);
+    const snapshot = events.find((e) => e.id === id);
     try {
       await deleteEvent(id);
       await refresh();
+      if (snapshot) {
+        toastUndo(`Événement « ${snapshot.title} » supprimé.`, async () => {
+          try {
+            const rest = stripMetaFields(snapshot);
+            await createEvent(rest);
+            await refresh();
+          } catch (err) {
+            console.error("[calendrier] Erreur annulation:", err);
+            toastError("Impossible d'annuler la suppression.");
+          }
+        });
+      }
     } catch (err) {
       console.error("[calendrier] Erreur suppression:", err);
       setError("Erreur lors de la suppression.");
@@ -448,8 +464,10 @@ export default function CalendrierPage() {
               <CardTitle className="text-lg">À venir</CardTitle>
               <CardDescription className="mt-1">Vos 5 prochains événements.</CardDescription>
               {loading ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-lavender" aria-hidden />
+                <div className="mt-4 space-y-3" aria-busy="true">
+                  <SkeletonEventItem />
+                  <SkeletonEventItem />
+                  <SkeletonEventItem />
                 </div>
               ) : upcoming.length === 0 ? (
                 <p className="mt-4 text-sm text-secondary">

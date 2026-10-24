@@ -23,6 +23,8 @@ import {
 } from "@/lib/vault/journal-repository";
 import { JOURNAL_MOOD_LABELS, type JournalEntry, type JournalMood } from "@/lib/schema/journal";
 import { cn } from "@/lib/utils/cn";
+import { toastUndo, toastError } from "@/store/toast-store";
+import { stripMetaFields } from "@/lib/utils/strip-meta";
 
 const MOOD_COLORS: Record<JournalMood, string> = {
   tres_bien: "bg-success/15 text-success border-success/25",
@@ -150,9 +152,22 @@ export default function JournalPage() {
 
   async function handleDelete(id: string) {
     setDeletingId(null);
+    const snapshot = entries.find((e) => e.id === id);
     try {
       await deleteJournalEntry(id);
       await load();
+      if (snapshot) {
+        toastUndo(`Entrée « ${snapshot.title} » supprimée.`, async () => {
+          try {
+            const rest = stripMetaFields(snapshot);
+            await createJournalEntry(rest);
+            await load();
+          } catch (err) {
+            console.error("[journal] Erreur annulation:", err);
+            toastError("Impossible d'annuler la suppression.");
+          }
+        });
+      }
     } catch (err) {
       console.error("[journal] Erreur suppression:", err);
       setError("Erreur lors de la suppression.");

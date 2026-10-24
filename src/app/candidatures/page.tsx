@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { KanbanBoard } from "@/components/applications/kanban-board";
+import { SkeletonGrid } from "@/components/common/skeleton";
 import { applicationTypeSchema } from "@/lib/schema/application";
 import {
   listApplications,
@@ -22,6 +23,8 @@ import {
   type ApplicationStatus,
 } from "@/lib/schema/application";
 import { cn } from "@/lib/utils/cn";
+import { toastUndo, toastError } from "@/store/toast-store";
+import { stripMetaFields } from "@/lib/utils/strip-meta";
 
 const STATUS_COLORS: Record<ApplicationStatus, string> = {
   brouillon: "bg-secondary/15 text-secondary border-secondary/25",
@@ -82,13 +85,19 @@ function CandidaturesPageInner() {
     return Object.values(data).some((v) => v !== undefined && v !== "") ? data : null;
   }, [searchParams]);
 
+  // Ouverture automatique du formulaire si ?new=1 (raccourci N / onboarding)
+  const openNew = searchParams.get("new") === "1";
+
   useEffect(() => {
     if (prefill) {
       setEditing(null);
       setShowCreate(true);
       setPrefillNotice(true);
+    } else if (openNew) {
+      setEditing(null);
+      setShowCreate(true);
     }
-  }, [prefill]);
+  }, [prefill, openNew]);
 
   async function refresh() {
     setLoading(true);
@@ -110,8 +119,27 @@ function CandidaturesPageInner() {
 
   async function handleDelete(id: string) {
     setDeletingId(null);
-    await deleteApplication(id);
-    await refresh();
+    // Snapshot pour undo : on garde l'objet en mémoire le temps du toast
+    const snapshot = applications.find((a) => a.id === id);
+    try {
+      await deleteApplication(id);
+      await refresh();
+      if (snapshot) {
+        toastUndo(`Candidature « ${snapshot.company} » supprimée.`, async () => {
+          try {
+            const rest = stripMetaFields(snapshot);
+            await createApplication(rest);
+            await refresh();
+          } catch (err) {
+            console.error("[candidatures] Erreur annulation:", err);
+            toastError("Impossible d'annuler la suppression.");
+          }
+        });
+      }
+    } catch (err) {
+      console.error("[candidatures] Erreur suppression:", err);
+      toastError("Erreur lors de la suppression.");
+    }
   }
 
   // Filtrage combiné : recherche texte + statut
@@ -255,9 +283,7 @@ function CandidaturesPageInner() {
 
         {/* Contenu */}
         {loading ? (
-          <div className="flex justify-center py-14">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-lavender border-t-transparent" />
-          </div>
+          <SkeletonGrid count={6} type="card" />
         ) : applications.length === 0 ? (
           <Card className="flex flex-col items-center px-6 py-14 text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-card-elevated shadow-glow">
