@@ -83,10 +83,10 @@ pas annoncée par l'interface**.
 │                                          ↓                                  │
 │                          Dexie / IndexedDB (ciphertext uniquement)          │
 └─────────────────────────────────────────────────────────────────────────────┘
-        │  (Phase 4, opt-in) chiffrement client → Cloudflare Workers + R2
+        │  (Phase 3, opt-in) chiffrement client → Cloudflare Workers + R2
         ▼
 ┌────────────────────── Serveur (aucune donnée en clair) ─────────────────────┐
-│  Cloudflare Pages (UI statique)  ·  Workers (API sync)  ·  R2 (objets chiffrés)│
+│  Cloudflare Pages (UI statique)  ·  Workers (API sync, Phase 3)  ·  R2 (objets chiffrés)│
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 

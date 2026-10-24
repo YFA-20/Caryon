@@ -17,7 +17,7 @@ updates:
       timezone: "Europe/Paris"
     open-pull-requests-limit: 5
     groups:
-      # Regroupe les mises à jour patch/mineures non critiques
+      # Regroupe les mises à jour patch/minor non critiques
       all-minor-patch:
         patterns: ["*"]
         update-types: ["minor", "patch"]
@@ -30,6 +30,7 @@ updates:
     commit-message:
       prefix: "chore(deps)"
       include: scope
+    rebase-strategy: auto
     # Les PR de sécurité sont prioritaires et hors groupe
     allow:
       - dependency-type: direct
@@ -50,3 +51,4 @@ updates:
       - "ci"
     commit-message:
       prefix: "chore(ci)"
+    rebase-strategy: auto
