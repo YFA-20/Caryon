@@ -74,6 +74,8 @@ export const vaultSettingsSchema = z.object({
   notificationsEnabled: z.boolean().default(true),
   /** L'onboarding de première utilisation a-t-il été suivi ? */
   onboardingCompleted: z.boolean().default(false),
+  /** Mode démonstration activé (données fictives chiffrées, clairement identifiées) */
+  demoMode: z.boolean().default(false),
   updatedAt: z.string().datetime(),
 });
 

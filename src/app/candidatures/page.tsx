@@ -2,12 +2,28 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Briefcase, KanbanSquare, List, Pencil, Plus, Search, Sparkles } from "lucide-react";
+import {
+  Briefcase,
+  KanbanSquare,
+  List,
+  Pencil,
+  Plus,
+  Search,
+  Sparkles,
+  Table2,
+} from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { KanbanBoard } from "@/components/applications/kanban-board";
+import {
+  ApplicationsTable,
+  extractSources,
+  type SortState,
+  type TableFilters,
+} from "@/components/applications/applications-table";
+import { ApplicationTimeline } from "@/components/applications/application-timeline";
 import { SkeletonGrid } from "@/components/common/skeleton";
 import { applicationTypeSchema } from "@/lib/schema/application";
 import {
@@ -23,7 +39,7 @@ import {
   type ApplicationStatus,
 } from "@/lib/schema/application";
 import { cn } from "@/lib/utils/cn";
-import { toastUndo, toastError } from "@/store/toast-store";
+import { toastUndo, toastError, toastSuccess } from "@/store/toast-store";
 import { stripMetaFields } from "@/lib/utils/strip-meta";
 
 const STATUS_COLORS: Record<ApplicationStatus, string> = {
@@ -38,7 +54,7 @@ const STATUS_COLORS: Record<ApplicationStatus, string> = {
   abandonnee: "bg-secondary/15 text-secondary border-secondary/25",
 };
 
-type ViewMode = "list" | "kanban";
+type ViewMode = "list" | "kanban" | "table";
 
 function formatDateTime(iso: string): string {
   if (!iso) return "—";
@@ -78,6 +94,18 @@ function CandidaturesPageInner() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | "all">("all");
   const [prefillNotice, setPrefillNotice] = useState(false);
+  const [timelineApp, setTimelineApp] = useState<Application | null>(null);
+
+  // Etats du tableau avance
+  const [sort, setSort] = useState<SortState>({ column: "updatedAt", direction: "desc" });
+  const [tableFilters, setTableFilters] = useState<TableFilters>({
+    search: "",
+    status: "all",
+    type: "all",
+    source: "",
+    dateFrom: "",
+    dateTo: "",
+  });
 
   // Pré-remplissage depuis la page /offres (query params)
   const prefill = useMemo(() => {
@@ -139,6 +167,48 @@ function CandidaturesPageInner() {
     } catch (err) {
       console.error("[candidatures] Erreur suppression:", err);
       toastError("Erreur lors de la suppression.");
+    }
+  }
+
+  // Actions groupées du tableau
+  async function handleBulkDelete(ids: string[]) {
+    const snapshots = applications.filter((a) => ids.includes(a.id));
+    try {
+      for (const id of ids) {
+        await deleteApplication(id);
+      }
+      await refresh();
+      toastUndo(
+        `${ids.length} candidature${ids.length > 1 ? "s" : ""} supprimée${ids.length > 1 ? "s" : ""},`,
+        async () => {
+          try {
+            for (const snap of snapshots) {
+              const rest = stripMetaFields(snap);
+              await createApplication(rest);
+            }
+            await refresh();
+          } catch (err) {
+            console.error("[candidatures] Erreur annulation suppression groupée:", err);
+            toastError("Impossible d'annuler la suppression.");
+          }
+        }
+      );
+    } catch (err) {
+      console.error("[candidatures] Erreur suppression groupée:", err);
+      toastError("Erreur lors de la suppression.");
+    }
+  }
+
+  async function handleBulkStatusChange(ids: string[], status: ApplicationStatus) {
+    try {
+      for (const id of ids) {
+        await updateApplication(id, { status });
+      }
+      await refresh();
+      toastSuccess(`Statut mis à jour pour ${ids.length} candidature${ids.length > 1 ? "s" : ""}`);
+    } catch (err) {
+      console.error("[candidatures] Erreur changement statut groupé:", err);
+      toastError("Erreur lors du changement de statut.");
     }
   }
 
@@ -252,8 +322,94 @@ function CandidaturesPageInner() {
               <List className="h-4 w-4" aria-hidden="true" />
               Liste
             </button>
+            <button
+              type="button"
+              onClick={() => setView("table")}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors",
+                view === "table"
+                  ? "bg-card-elevated text-primary shadow-glow"
+                  : "text-secondary hover:text-primary"
+              )}
+              aria-pressed={view === "table"}
+            >
+              <Table2 className="h-4 w-4" aria-hidden="true" />
+              Tableau
+            </button>
           </div>
         </div>
+
+        {/* Filtres avances du tableau */}
+        {view === "table" && (
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-subtle bg-card p-4">
+            <select
+              value={tableFilters.type}
+              onChange={(e) =>
+                setTableFilters((f) => ({ ...f, type: e.target.value as TableFilters["type"] }))
+              }
+              className="rounded-xl border border-subtle bg-surface px-3 py-2 text-sm text-primary focus:border-lavender focus:outline-none focus:ring-2 focus:ring-lavender/20"
+              aria-label="Filtrer par type"
+            >
+              <option value="all">Tous les types</option>
+              {Object.entries(APPLICATION_TYPE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <select
+              value={tableFilters.source}
+              onChange={(e) => setTableFilters((f) => ({ ...f, source: e.target.value }))}
+              className="rounded-xl border border-subtle bg-surface px-3 py-2 text-sm text-primary focus:border-lavender focus:outline-none focus:ring-2 focus:ring-lavender/20"
+              aria-label="Filtrer par source"
+            >
+              <option value="">Toutes les sources</option>
+              {extractSources(applications).map((src) => (
+                <option key={src} value={src}>
+                  {src}
+                </option>
+              ))}
+            </select>
+            <div className="flex items-center gap-2 text-xs text-secondary">
+              <span>Créée entre</span>
+              <input
+                type="date"
+                value={tableFilters.dateFrom}
+                onChange={(e) => setTableFilters((f) => ({ ...f, dateFrom: e.target.value }))}
+                className="rounded-lg border border-subtle bg-surface px-2 py-1.5 text-sm text-primary focus:border-lavender focus:outline-none"
+                aria-label="Date de création minimale"
+              />
+              <span>et</span>
+              <input
+                type="date"
+                value={tableFilters.dateTo}
+                onChange={(e) => setTableFilters((f) => ({ ...f, dateTo: e.target.value }))}
+                className="rounded-lg border border-subtle bg-surface px-2 py-1.5 text-sm text-primary focus:border-lavender focus:outline-none"
+                aria-label="Date de création maximale"
+              />
+            </div>
+            {(tableFilters.type !== "all" ||
+              tableFilters.source ||
+              tableFilters.dateFrom ||
+              tableFilters.dateTo) && (
+              <button
+                type="button"
+                onClick={() =>
+                  setTableFilters((f) => ({
+                    ...f,
+                    type: "all",
+                    source: "",
+                    dateFrom: "",
+                    dateTo: "",
+                  }))
+                }
+                className="text-xs text-lavender hover:underline"
+              >
+                Réinitialiser les filtres avancés
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Formulaire création */}
         {showCreate && (
@@ -279,6 +435,11 @@ function CandidaturesPageInner() {
               refresh();
             }}
           />
+        )}
+
+        {/* Chronologie */}
+        {timelineApp && (
+          <ApplicationTimeline application={timelineApp} onClose={() => setTimelineApp(null)} />
         )}
 
         {/* Contenu */}
@@ -322,6 +483,25 @@ function CandidaturesPageInner() {
               Réinitialiser les filtres
             </Button>
           </Card>
+        ) : view === "table" ? (
+          <ApplicationsTable
+            applications={applications}
+            filters={{
+              ...tableFilters,
+              search,
+              status: statusFilter,
+            }}
+            sort={sort}
+            onSortChange={setSort}
+            onEdit={(app) => {
+              setShowCreate(false);
+              setEditing(app);
+            }}
+            onDelete={setDeletingId}
+            onDeleteMany={handleBulkDelete}
+            onStatusChangeMany={handleBulkStatusChange}
+            onShowTimeline={setTimelineApp}
+          />
         ) : view === "kanban" ? (
           <KanbanBoard
             applications={filtered}
@@ -362,6 +542,13 @@ function CandidaturesPageInner() {
                     <p>Modifiée le {formatDateTime(app.updatedAt)}</p>
                   </div>
                   <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setTimelineApp(app)}
+                      className="text-xs text-secondary hover:text-lavender"
+                    >
+                      Chronologie
+                    </button>
                     <button
                       type="button"
                       onClick={() => {

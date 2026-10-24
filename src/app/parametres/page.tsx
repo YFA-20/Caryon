@@ -1,12 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, Loader2, Save, Settings, Trash2 } from "lucide-react";
+import { AlertTriangle, FlaskConical, Loader2, Save, Settings, Trash2 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getSettings, saveSettings, wipeAllData } from "@/lib/vault/goal-repository";
+import { seedDemoData, hasExistingData, type DemoSeedResult } from "@/lib/vault/demo-data-service";
+import { toastSuccess, toastError } from "@/store/toast-store";
 import { useVaultStore } from "@/store/vault-store";
 import { useUiStore } from "@/store/ui-store";
 import { lock } from "@/lib/vault/vault-service";
@@ -34,6 +36,12 @@ export default function ParametresPage() {
   const [wipeText, setWipeText] = useState("");
   const [wiping, setWiping] = useState(false);
 
+  // Mode demonstration
+  const [demoMode, setDemoMode] = useState(false);
+  const [demoSeeding, setDemoSeeding] = useState(false);
+  const [demoConfirm, setDemoConfirm] = useState(false);
+  const [hasData, setHasData] = useState(false);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -42,6 +50,9 @@ export default function ParametresPage() {
       setFormAutoLock(settings.autoLockMs);
       setFirstName(settings.firstName);
       setAutoLockMs(settings.autoLockMs);
+      setDemoMode(settings.demoMode);
+      const dataExists = await hasExistingData();
+      setHasData(dataExists);
     } catch (err) {
       console.error("[parametres] Erreur chargement:", err);
       setError("Impossible de charger les paramètres.");
@@ -87,6 +98,42 @@ export default function ParametresPage() {
       console.error("[parametres] Erreur suppression:", err);
       setError("Erreur lors de la suppression du coffre.");
       setWiping(false);
+    }
+  }
+
+  async function handleDemoToggle(enable: boolean) {
+    if (enable) {
+      // Verifier si des donnees existent deja
+      const dataExists = await hasExistingData();
+      if (dataExists && !demoConfirm) {
+        setDemoConfirm(true);
+        return;
+      }
+      setDemoSeeding(true);
+      try {
+        const result: DemoSeedResult = await seedDemoData();
+        await saveSettings({ demoMode: true });
+        setDemoMode(true);
+        setDemoConfirm(false);
+        toastSuccess(
+          `Mode démonstration activé : ${result.applications} candidatures, ${result.documents} documents, ${result.events} événements créés.`
+        );
+      } catch (err) {
+        console.error("[parametres] Erreur activation demo:", err);
+        toastError("Erreur lors de l'activation du mode démonstration.");
+      } finally {
+        setDemoSeeding(false);
+      }
+    } else {
+      // Desactivation : on desactive le flag, les donnees restent (l'utilisateur peut les supprimer)
+      try {
+        await saveSettings({ demoMode: false });
+        setDemoMode(false);
+        toastSuccess("Mode démonstration désactivé.");
+      } catch (err) {
+        console.error("[parametres] Erreur désactivation demo:", err);
+        toastError("Erreur lors de la désactivation.");
+      }
     }
   }
 
@@ -177,6 +224,74 @@ export default function ParametresPage() {
             </Card>
           </form>
         )}
+
+        {/* Mode demonstration */}
+        <Card className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-card-elevated">
+              <FlaskConical className="h-5 w-5 text-warning" aria-hidden />
+            </div>
+            <div>
+              <CardTitle className="text-lg">Mode démonstration</CardTitle>
+              <CardDescription>
+                Explorez l&apos;application avec des données fictives chiffrées.
+              </CardDescription>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-subtle bg-surface p-4">
+            <label className="flex items-start gap-3 text-sm">
+              <input
+                type="checkbox"
+                checked={demoMode}
+                disabled={demoSeeding}
+                onChange={(e) => handleDemoToggle(e.target.checked)}
+                className="mt-0.5 rounded border-subtle accent-lavender"
+              />
+              <span>
+                <span className="block font-medium text-primary">
+                  Activer le mode démonstration
+                </span>
+                <span className="mt-1 block text-xs text-secondary">
+                  Génère des données fictives réalistes (candidatures, documents, événements,
+                  objectifs, journal) chiffrées exactement comme vos vraies données. Une bannière
+                  jaune indiquera que vous êtes en mode démo. Les données sont réelles dans le
+                  coffre : vous pouvez les modifier, les supprimer, les exporter.
+                </span>
+              </span>
+            </label>
+
+            {demoMode && (
+              <div className="mt-3 rounded-lg border border-warning/25 bg-warning/10 px-3 py-2 text-xs text-warning">
+                Mode démonstration actif — une bannière jaune est affichée en haut de chaque page.
+              </div>
+            )}
+
+            {demoSeeding && (
+              <div className="mt-3 flex items-center gap-2 text-xs text-secondary">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                Génération des données de démonstration…
+              </div>
+            )}
+
+            {demoConfirm && hasData && (
+              <div className="mt-3 space-y-2 rounded-lg border border-warning/30 bg-warning/5 p-3">
+                <p className="text-xs text-warning">
+                  Vous avez déjà des données dans votre coffre. Le mode démo va ajouter des données
+                  fictives <strong>à côté</strong> des vôtres. Continuer ?
+                </p>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={() => handleDemoToggle(true)}>
+                    Confirmer
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setDemoConfirm(false)}>
+                    Annuler
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </Card>
 
         <Card className="space-y-4 border-danger/30 bg-danger/5">
           <div className="flex items-center gap-3">
