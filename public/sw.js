@@ -1,21 +1,25 @@
 /**
- * Velora — Service Worker (offline-first, cache maîtrisé).
+ * Velora — Service Worker (assets statiques uniquement).
  *
- * Stratégie :
- * - HTML (navigations) : network-first, fallback cache → l'utilisateur a toujours
- *   la dernière version en ligne, et l'app reste utilisable hors ligne.
- * - Assets statiques (_next/static, fonts, icons) : cache-first avec versioning
- *   (les noms de fichiers contiennent un hash de contenu, donc immutables).
- * - manifest.webmanifest et sw.js : toujours frais (network-first).
- * - Le SW ne met JAMAIS en cache de données utilisateur (IndexedDB géré séparément).
+ * STRATÉGIE SIMPLIFIÉE (v3) :
+ * - Le SW ne gère PLUS les navigations HTML (pas d'interception).
+ *   Les pages HTML passent directement par le navigateur → Cloudflare.
+ *   Le header "Cache-Control: no-cache" force la revalidation.
+ * - Le SW ne gère QUE les assets statiques immutables (/_next/static/*).
+ *   Ces fichiers ont un hash dans leur nom → cache-first est sûr.
+ * - Le SW ne met JAMAIS en cache de données utilisateur.
  *
- * Sécurité : périmètre limité à 'self', aucune évaluation dynamique de code,
- * nettoyage proactif des anciens caches à l'activation.
+ * POURQUOI : L'interception des navigations HTML causait des écrans vierges
+ * après F5 sur les pages profondes (conflit entre le cache SW, le cache
+ * navigateur, et les chunks JS référencés par le HTML).
+ *
+ * L'app reste une PWA (manifest, icônes, installable) et fonctionne
+ * hors ligne pour les assets déjà chargés, mais les pages HTML
+ * nécessitent une connexion (ou le cache navigateur HTTP).
  */
 
-const CACHE_VERSION = "velora-v2";
+const CACHE_VERSION = "velora-v3";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
-const HTML_CACHE = `${CACHE_VERSION}-html`;
 
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());
@@ -32,36 +36,15 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// Nettoyage proactif du HTML_CACHE : garde les 50 dernières entrées max.
-// Évite que le cache grossisse indéfiniment avec toutes les pages visitées.
-async function pruneHtmlCache() {
-  const cache = await caches.open(HTML_CACHE);
-  const keys = await cache.keys();
-  if (keys.length > 50) {
-    const toDelete = keys.slice(0, keys.length - 50);
-    await Promise.all(toDelete.map((k) => cache.delete(k)));
-  }
-}
-
-// Appelé après chaque mise en cache HTML (depuis le fetch handler)
-self.addEventListener("message", (event) => {
-  if (event.data === "prune-html-cache") {
-    event.waitUntil(pruneHtmlCache());
-  }
-});
-
 function isStaticAsset(url) {
   return (
     url.pathname.startsWith("/_next/static/") ||
     url.pathname.startsWith("/icons/") ||
     url.pathname.endsWith(".woff2") ||
     url.pathname.endsWith(".png") ||
-    url.pathname.endsWith(".css")
+    url.pathname.endsWith(".css") ||
+    url.pathname.endsWith(".ico")
   );
-}
-
-function isNavigation(request) {
-  return request.mode === "navigate" || request.destination === "document";
 }
 
 self.addEventListener("fetch", (event) => {
@@ -71,51 +54,19 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  // manifest et SW : toujours frais
+  // NE PAS intercepter les navigations HTML — laisser le navigateur gérer.
+  // C'est la correction clé pour les écrans vierges après F5.
+  if (request.mode === "navigate" || request.destination === "document") {
+    return; // Pas de event.respondWith() → le navigateur fait la requête normalement
+  }
+
+  // manifest et sw.js : toujours frais
   if (url.pathname === "/manifest.webmanifest" || url.pathname === "/sw.js") {
-    event.respondWith(fetch(request).catch(() => caches.match(request)));
+    event.respondWith(fetch(request));
     return;
   }
 
-  // Navigations (HTML) : network-first avec timeout.
-  // Si le réseau répond en moins de 3s → dernière version.
-  // Si le réseau est lent/échoue → cache immédiatement (pas d'écran blanc).
-  // Le cache est toujours mis à jour en arrière-plan (stale-while-revalidate).
-  if (isNavigation(request)) {
-    event.respondWith(
-      Promise.race([
-        fetch(request).then((response) => {
-          if (response.ok) {
-            const copy = response.clone();
-            caches.open(HTML_CACHE).then((cache) => cache.put(request, copy));
-          }
-          return response;
-        }),
-        new Promise() <
-          Response >
-          ((resolve) =>
-            setTimeout(() => {
-              caches
-                .match(request)
-                .then(
-                  (r) =>
-                    r ||
-                    caches.match("/index.html") ||
-                    caches.match("/") ||
-                    new Response("<html><body>Chargement…</body></html>", {
-                      headers: { "Content-Type": "text/html" },
-                    })
-                )
-                .then(resolve);
-            }, 3000)),
-      ]).catch(() =>
-        caches.match(request).then((r) => r || caches.match("/index.html") || caches.match("/"))
-      )
-    );
-    return;
-  }
-
-  // Assets statiques : cache-first (noms hashés = immutables)
+  // Assets statiques immutables : cache-first (sûr car noms hashés)
   if (isStaticAsset(url)) {
     event.respondWith(
       caches.match(request).then(
@@ -133,6 +84,6 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Tout le reste : network par défaut
-  event.respondWith(fetch(request));
+  // Tout le reste (HTML, etc.) : réseau par défaut, pas d'interception
+  // (pas de event.respondWith())
 });
