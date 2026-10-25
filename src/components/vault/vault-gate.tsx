@@ -33,6 +33,15 @@ import { getSettings } from "@/lib/vault/goal-repository";
  * sans que le store Zustand n'ait été notifié, le guard force le retour
  * au portail de déverrouillage.
  *
+ * FIX ÉCRAN VIERGE F5 (définitif) : on NE redirige PLUS vers « / » quand le
+ * coffre est verrouillé sur une page profonde. Le portail de déverrouillage
+ * s'affiche directement sur la page demandée (ex: /candidatures). Après
+ * déverrouillage, les enfants sont rendus normalement sans changement d'URL.
+ * Le redirect window.location.replace(« / ») causait un écran vierge transitoire
+ * car il était déclenché pendant l'hydratation React — le navigateur annulait
+ * le rendu actuel et chargeait « / », laissant un écran vide pendant le
+ * chargement.
+ *
  * FIX auto-lock : au déverrouillage, on appelle touchActivity() pour
  * réinitialiser lastActivityAt. Sinon, après un F5, lastActivityAt date
  * du chargement de la page (avant le déverrouillage), ce qui fait que
@@ -87,20 +96,6 @@ export function VaultGate({ children }: { children: React.ReactNode }) {
     }, 5000); // Vérification toutes les 5 secondes
 
     return () => clearInterval(guardInterval);
-  }, [status]);
-
-  // FIX écran noir F5 : quand le coffre est verrouillé et qu'on est sur une
-  // page profonde (ex: /journal, /candidatures), Next.js output:"export" a
-  // déjà chargé le HTML statique de la page. Si la page essaie d'accéder
-  // à des données chiffrées avant que VaultGate ne soit prêt, React crash
-  // → écran noir. Solution : rediriger vers la racine où VaultGate affiche
-  // proprement l'écran de déverrouillage.
-  useEffect(() => {
-    if (status !== "locked") return;
-    if (typeof window === "undefined") return;
-    if (window.location.pathname !== "/") {
-      window.location.replace("/");
-    }
   }, [status]);
 
   async function handleCreate(e: React.FormEvent) {

@@ -4,6 +4,7 @@
  * Vérifie que :
  * - forceLock() efface la session
  * - forceLock() met à jour le store Zustand (status → "locked")
+ * - forceLock() NE redirige PAS (fix écran vierge F5 sur pages profondes)
  * - Le store reflète correctement l'état après forceLock
  */
 import "fake-indexeddb/auto";
@@ -21,16 +22,6 @@ describe("forceLock", () => {
     await db.documents.clear();
     // Reset le store
     useVaultStore.getState().setStatus("loading");
-    // Mock window.location pour les tests
-    vi.stubGlobal("window", {
-      ...globalThis.window,
-      location: {
-        ...globalThis.window?.location,
-        pathname: "/candidatures",
-        replace: vi.fn(),
-        reload: vi.fn(),
-      },
-    });
   });
 
   afterEach(() => {
@@ -59,25 +50,29 @@ describe("forceLock", () => {
     expect(useVaultStore.getState().status).toBe("locked");
   });
 
-  it("appelle window.location.replace si pas sur la racine", async () => {
+  it("NE redirige PAS (pas de window.location.replace) — fix écran vierge F5", async () => {
     await createVault(PASSPHRASE, { testMode: true });
     const replaceMock = vi.fn();
+    const reloadMock = vi.fn();
     vi.stubGlobal("window", {
       ...globalThis.window,
       location: {
         ...globalThis.window?.location,
         pathname: "/candidatures",
         replace: replaceMock,
-        reload: vi.fn(),
+        reload: reloadMock,
       },
     });
 
     forceLock();
+    await new Promise((resolve) => setTimeout(resolve, 50));
 
-    expect(replaceMock).toHaveBeenCalledWith("/");
+    // Plus de redirect — le portail s'affiche sur la page actuelle via le store
+    expect(replaceMock).not.toHaveBeenCalled();
+    expect(reloadMock).not.toHaveBeenCalled();
   });
 
-  it("appelle window.location.reload si déjà sur la racine", async () => {
+  it("NE recharge PAS la page (pas de window.location.reload) même sur la racine", async () => {
     await createVault(PASSPHRASE, { testMode: true });
     const reloadMock = vi.fn();
     vi.stubGlobal("window", {
@@ -91,8 +86,9 @@ describe("forceLock", () => {
     });
 
     forceLock();
+    await new Promise((resolve) => setTimeout(resolve, 50));
 
-    expect(reloadMock).toHaveBeenCalled();
+    expect(reloadMock).not.toHaveBeenCalled();
   });
 
   it("lock() seul n'efface que la session (pas le store)", async () => {
