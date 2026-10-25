@@ -2,64 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Briefcase,
-  CalendarDays,
-  FileText,
-  LayoutDashboard,
-  Lock,
-  NotebookPen,
-  Save,
-  Search,
-  Settings,
-  ShieldCheck,
-  Sparkles,
-  Target,
-  TrendingUp,
-} from "lucide-react";
+import { Lock, Search } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
-
-interface NavItem {
-  label: string;
-  href: string;
-  icon: typeof LayoutDashboard;
-}
-
-interface NavGroup {
-  title: string;
-  items: NavItem[];
-}
-
-const NAV_GROUPS: NavGroup[] = [
-  {
-    title: "Mon espace",
-    items: [
-      { label: "Aujourd'hui", href: "/", icon: LayoutDashboard },
-      { label: "Mes candidatures", href: "/candidatures", icon: Briefcase },
-      { label: "Calendrier", href: "/calendrier", icon: CalendarDays },
-      { label: "Mes documents", href: "/documents", icon: FileText },
-      { label: "Journal de recherche", href: "/journal", icon: NotebookPen },
-    ],
-  },
-  {
-    title: "Ma carrière",
-    items: [
-      { label: "Explorer les offres", href: "/offres", icon: Sparkles },
-      { label: "Assistant IA", href: "/ia", icon: Sparkles },
-      { label: "Préparer un entretien", href: "/entretien", icon: Target },
-      { label: "Analyses", href: "/analyses", icon: TrendingUp },
-      { label: "Mes objectifs", href: "/objectifs", icon: Target },
-    ],
-  },
-  {
-    title: "Mon coffre-fort",
-    items: [
-      { label: "Sécurité et confidentialité", href: "/securite", icon: ShieldCheck },
-      { label: "Sauvegardes", href: "/sauvegardes", icon: Save },
-      { label: "Paramètres", href: "/parametres", icon: Settings },
-    ],
-  },
-];
+import { NAV_GROUPS } from "./nav-items";
 
 export function Sidebar() {
   const pathname = usePathname();
