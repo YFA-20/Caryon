@@ -13,7 +13,7 @@
  * nettoyage proactif des anciens caches à l'activation.
  */
 
-const CACHE_VERSION = "velora-v1";
+const CACHE_VERSION = "velora-v2";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const HTML_CACHE = `${CACHE_VERSION}-html`;
 
@@ -30,6 +30,24 @@ self.addEventListener("activate", (event) => {
       )
       .then(() => self.clients.claim())
   );
+});
+
+// Nettoyage proactif du HTML_CACHE : garde les 50 dernières entrées max.
+// Évite que le cache grossisse indéfiniment avec toutes les pages visitées.
+async function pruneHtmlCache() {
+  const cache = await caches.open(HTML_CACHE);
+  const keys = await cache.keys();
+  if (keys.length > 50) {
+    const toDelete = keys.slice(0, keys.length - 50);
+    await Promise.all(toDelete.map((k) => cache.delete(k)));
+  }
+}
+
+// Appelé après chaque mise en cache HTML (depuis le fetch handler)
+self.addEventListener("message", (event) => {
+  if (event.data === "prune-html-cache") {
+    event.waitUntil(pruneHtmlCache());
+  }
 });
 
 function isStaticAsset(url) {
@@ -59,20 +77,40 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Navigations (HTML) : network-first, fallback cache
+  // Navigations (HTML) : network-first avec timeout.
+  // Si le réseau répond en moins de 3s → dernière version.
+  // Si le réseau est lent/échoue → cache immédiatement (pas d'écran blanc).
+  // Le cache est toujours mis à jour en arrière-plan (stale-while-revalidate).
   if (isNavigation(request)) {
     event.respondWith(
-      fetch(request)
-        .then((response) => {
+      Promise.race([
+        fetch(request).then((response) => {
           if (response.ok) {
             const copy = response.clone();
             caches.open(HTML_CACHE).then((cache) => cache.put(request, copy));
           }
           return response;
-        })
-        .catch(() =>
-          caches.match(request).then((r) => r || caches.match("/index.html") || caches.match("/"))
-        )
+        }),
+        new Promise() <
+          Response >
+          ((resolve) =>
+            setTimeout(() => {
+              caches
+                .match(request)
+                .then(
+                  (r) =>
+                    r ||
+                    caches.match("/index.html") ||
+                    caches.match("/") ||
+                    new Response("<html><body>Chargement…</body></html>", {
+                      headers: { "Content-Type": "text/html" },
+                    })
+                )
+                .then(resolve);
+            }, 3000)),
+      ]).catch(() =>
+        caches.match(request).then((r) => r || caches.match("/index.html") || caches.match("/"))
+      )
     );
     return;
   }
