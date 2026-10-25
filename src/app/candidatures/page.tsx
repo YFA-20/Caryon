@@ -1,7 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import {
   Briefcase,
   KanbanSquare,
@@ -42,6 +41,15 @@ import {
 import { cn } from "@/lib/utils/cn";
 import { toastUndo, toastError, toastSuccess } from "@/store/toast-store";
 import { stripMetaFields } from "@/lib/utils/strip-meta";
+import {
+  persistUiState,
+  restoreUiState,
+  CANDIDATURES_VIEW_KEY,
+  CANDIDATURES_SEARCH_KEY,
+  CANDIDATURES_STATUS_FILTER_KEY,
+  CANDIDATURES_SORT_KEY,
+  CANDIDATURES_TABLE_FILTERS_KEY,
+} from "@/lib/utils/ui-persistence";
 
 const STATUS_COLORS: Record<ApplicationStatus, string> = {
   brouillon: "bg-secondary/15 text-secondary border-secondary/25",
@@ -86,28 +94,61 @@ function readPrefillFromUrl(searchParams: URLSearchParams) {
 }
 
 function CandidaturesPageInner() {
-  const searchParams = useSearchParams();
+  // Lecture des query params via window.location (pas useSearchParams) pour
+  // éviter le CSR bailout de Next.js qui contribuait à l'écran vide après F5
+  // sur les pages profondes en output:"export".
+  const searchParams = useMemo(() => {
+    if (typeof window === "undefined") return new URLSearchParams();
+    return new URLSearchParams(window.location.search);
+  }, []);
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Application | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [view, setView] = useState<ViewMode>("kanban");
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<ApplicationStatus | "all">("all");
+  const [view, setView] = useState<ViewMode>(() =>
+    restoreUiState<ViewMode>(CANDIDATURES_VIEW_KEY, "kanban")
+  );
+  const [search, setSearch] = useState<string>(() =>
+    restoreUiState<string>(CANDIDATURES_SEARCH_KEY, "")
+  );
+  const [statusFilter, setStatusFilter] = useState<ApplicationStatus | "all">(() =>
+    restoreUiState<ApplicationStatus | "all">(CANDIDATURES_STATUS_FILTER_KEY, "all")
+  );
   const [prefillNotice, setPrefillNotice] = useState(false);
   const [timelineApp, setTimelineApp] = useState<Application | null>(null);
   const [showLetterGen, setShowLetterGen] = useState(false);
 
   // Etats du tableau avance
-  const [sort, setSort] = useState<SortState>({ column: "updatedAt", direction: "desc" });
-  const [tableFilters, setTableFilters] = useState<TableFilters>({
-    search: "",
-    status: "all",
-    type: "all",
-    source: "",
-    dateFrom: "",
-    dateTo: "",
-  });
+  const [sort, setSort] = useState<SortState>(() =>
+    restoreUiState<SortState>(CANDIDATURES_SORT_KEY, { column: "updatedAt", direction: "desc" })
+  );
+  const [tableFilters, setTableFilters] = useState<TableFilters>(() =>
+    restoreUiState<TableFilters>(CANDIDATURES_TABLE_FILTERS_KEY, {
+      search: "",
+      status: "all",
+      type: "all",
+      source: "",
+      dateFrom: "",
+      dateTo: "",
+    })
+  );
+
+  // Persistance UI dans sessionStorage (restaurée au F5, effacée à la fermeture de l'onglet)
+  useEffect(() => {
+    persistUiState(CANDIDATURES_VIEW_KEY, view);
+  }, [view]);
+  useEffect(() => {
+    persistUiState(CANDIDATURES_SEARCH_KEY, search);
+  }, [search]);
+  useEffect(() => {
+    persistUiState(CANDIDATURES_STATUS_FILTER_KEY, statusFilter);
+  }, [statusFilter]);
+  useEffect(() => {
+    persistUiState(CANDIDATURES_SORT_KEY, sort);
+  }, [sort]);
+  useEffect(() => {
+    persistUiState(CANDIDATURES_TABLE_FILTERS_KEY, tableFilters);
+  }, [tableFilters]);
 
   // Pré-remplissage depuis la page /offres (query params)
   const prefill = useMemo(() => {
@@ -625,19 +666,7 @@ function CandidaturesPageInner() {
 }
 
 export default function CandidaturesPage() {
-  return (
-    <Suspense
-      fallback={
-        <AppShell>
-          <div className="flex justify-center p-14">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-lavender border-t-transparent" />
-          </div>
-        </AppShell>
-      }
-    >
-      <CandidaturesPageInner />
-    </Suspense>
-  );
+  return <CandidaturesPageInner />;
 }
 
 interface ApplicationFormProps {

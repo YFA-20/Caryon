@@ -3,6 +3,7 @@ import { Cormorant_Garamond, Inter } from "next/font/google";
 import type { ReactNode } from "react";
 import "./globals.css";
 import { VaultGate } from "@/components/vault/vault-gate";
+import { ErrorBoundary } from "@/components/common/error-boundary";
 
 const serif = Cormorant_Garamond({
   subsets: ["latin"],
@@ -23,6 +24,14 @@ export const metadata: Metadata = {
   description:
     "Velora centralise vos candidatures, documents, entretiens et relances dans un coffre numérique chiffré, local-first.",
   manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "32x32", type: "image/x-icon" },
+      { url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: "/icons/apple-touch-icon.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -44,7 +53,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="fr" className={`dark ${serif.variable} ${sans.variable}`}>
       <body>
-        <VaultGate>{children}</VaultGate>
+        <ErrorBoundary>
+          <VaultGate>{children}</VaultGate>
+        </ErrorBoundary>
       </body>
     </html>
   );
