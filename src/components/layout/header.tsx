@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, FlaskConical, Lock, Menu, Unlock } from "lucide-react";
+import { Bell, FlaskConical, Lock, Menu, Smartphone, Unlock } from "lucide-react";
 import { useUiStore } from "@/store/ui-store";
 import { useVaultStore } from "@/store/vault-store";
 import { forceLock } from "@/lib/vault/vault-service";
@@ -15,6 +15,7 @@ import {
   type NotificationPermissionState,
 } from "@/lib/notifications/notification-service";
 import { formatDateFr, todayIso } from "@/lib/utils/date";
+import { usePwaStandalone } from "@/hooks/use-pwa-standalone";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -35,6 +36,7 @@ export function Header() {
   const [notifMessage, setNotifMessage] = useState<string | null>(null);
   const [exitingDemo, setExitingDemo] = useState(false);
   const [enteringDemo, setEnteringDemo] = useState(false);
+  const isPwaStandalone = usePwaStandalone();
 
   // Synchronise demoMode depuis les settings chiffrés au chargement.
   // Le store UI part à false par défaut ; sans cette synchro, le bouton
@@ -153,6 +155,16 @@ export function Header() {
       </div>
 
       <div className="hidden items-center gap-2 sm:flex">
+        {isPwaStandalone && (
+          <span
+            className="flex items-center gap-1 text-lavender"
+            title="Application installée (mode PWA)"
+            role="img"
+            aria-label="Application installée"
+          >
+            <Smartphone className="h-4 w-4" aria-hidden />
+          </span>
+        )}
         <Badge variant={demoMode ? "lavender" : "default"}>
           {demoMode ? "Mode démonstration" : "Hors ligne · local"}
         </Badge>
@@ -160,6 +172,18 @@ export function Header() {
           {unlocked ? "Coffre déverrouillé" : "Coffre verrouillé"}
         </Badge>
       </div>
+
+      {/* Icône PWA — visible quand l'app est installée (tous écrans) */}
+      {isPwaStandalone && (
+        <span
+          className="flex h-9 w-9 items-center justify-center text-lavender sm:hidden"
+          title="Application installée (mode PWA)"
+          role="img"
+          aria-label="Application installée"
+        >
+          <Smartphone className="h-5 w-5" aria-hidden />
+        </span>
+      )}
 
       {/* Bouton Mode démo — visible quand le mode est INACTIF */}
       {!demoMode && (
