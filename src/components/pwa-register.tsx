@@ -16,20 +16,17 @@ export function PwaRegister() {
       .register("/sw.js")
       .then((reg) => {
         // Force la mise à jour du SW si une nouvelle version est disponible.
-        // Cela garantit que les utilisateurs ont toujours le dernier SW
-        // (et donc la bonne stratégie de cache) après un déploiement.
         reg.update().catch(() => {});
 
-        // Écoute les mises à jour du SW
+        // Désinscrire l'ancien SW s'il existe et ne gérait pas les navigations.
+        // Le SW v3 ne gère plus que les assets statiques.
+        // Si un ancien SW (v1/v2) est actif, on le remplace.
         reg.addEventListener("updatefound", () => {
           const newWorker = reg.installing;
           if (!newWorker) return;
           newWorker.addEventListener("statechange", () => {
-            // Quand le nouveau SW est actif, on peut notifier l'utilisateur
-            // (optionnel — ici on laisse le navigateur gérer)
             if (newWorker.state === "activated") {
-              // Le nouveau SW est actif, les anciens caches sont nettoyés
-              // automatiquement par le handler "activate" dans sw.js
+              // Nouveau SW actif, anciens caches nettoyés par le handler "activate"
             }
           });
         });
@@ -37,6 +34,15 @@ export function PwaRegister() {
       .catch(() => {
         // Dégradé gracieux : l'app reste utilisable sans cache SW.
       });
+
+    // Nettoyage proactif : désinscrire les anciens SW qui pourraient
+    // encore intercepter les navigations HTML (cause d'écrans vierges).
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      for (const reg of registrations) {
+        // On garde le SW actuel, mais on s'assure qu'il est à jour
+        reg.update().catch(() => {});
+      }
+    });
   }, []);
 
   return null;
