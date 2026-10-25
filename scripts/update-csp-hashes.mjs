@@ -48,9 +48,6 @@ const HEADER_TEMPLATE = `/*
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Resource-Policy: same-origin
 
-/sw.js
-  Cache-Control: no-cache
-
 /manifest.webmanifest
   Cache-Control: no-cache
 
@@ -97,7 +94,7 @@ async function main() {
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
     "connect-src 'self'",
-    "worker-src 'self' blob:",
+    // worker-src retiré : plus de Service Worker (fix écrans vierges F5)
     "manifest-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",

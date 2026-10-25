@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { Header } from "./header";
 import { MobileDrawer } from "./mobile-drawer";
 import { Sidebar } from "./sidebar";
-import { PwaRegister } from "@/components/pwa-register";
+import { SwUnregister } from "@/components/pwa-register";
 import { CommandPalette } from "@/components/common/command-palette";
 import { ToastContainer } from "@/components/common/toast-container";
 import { DemoBanner } from "@/components/common/demo-banner";
@@ -35,7 +35,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <main className="flex-1 pb-10">{children}</main>
       </div>
       <MobileDrawer />
-      <PwaRegister />
+      <SwUnregister />
       <CommandPalette />
       <ToastContainer />
       <OnboardingWizard />

@@ -62,7 +62,7 @@ jobs:
 
       - name: Vérifier les fichiers critiques
         run: |
-          for f in out/index.html out/sw.js out/manifest.webmanifest out/_headers; do
+          for f in out/index.html out/manifest.webmanifest out/_headers; do
             if [ ! -f "$f" ]; then
               echo "::error::Fichier manquant: $f"
               exit 1

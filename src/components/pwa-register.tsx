@@ -3,46 +3,57 @@
 import { useEffect } from "react";
 
 /**
- * Velora — enregistre le service worker (offline-first).
- * Composant client isolé ; aucun effet de bord au rendu serveur.
+ * Velora — désinscription du Service Worker (fix écrans vierges F5).
+ *
+ * Le Service Worker interceptait les navigations HTML et causait des
+ * écrans vierges après F5 sur les pages profondes (/candidatures,
+ * /calendrier, etc.) à cause de conflits entre le cache SW, le cache
+ * navigateur et les chunks JS référencés par le HTML.
+ *
+ * SOLUTION RADICALE : supprimer complètement le SW.
+ * - L'app reste une PWA (manifest, icônes, installable via le navigateur)
+ * - Les pages HTML passent directement : navigateur → Cloudflare
+ * - Cache-Control: no-cache force la revalidation du HTML
+ * - Les assets statiques (/_next/static/*) restent en cache navigateur
+ *   (Cache-Control: immutable, max-age=1an, noms hashés)
+ *
+ * Ce composant désinscrit les anciens SW encore actifs chez les
+ * utilisateurs (v1, v2, v3) et nettoie les caches associés.
  */
-export function PwaRegister() {
+export function SwUnregister() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!("serviceWorker" in navigator)) return;
-    if (process.env.NODE_ENV !== "production") return;
 
+    // Désinscrire tous les Service Workers enregistrés
     navigator.serviceWorker
-      .register("/sw.js")
-      .then((reg) => {
-        // Force la mise à jour du SW si une nouvelle version est disponible.
-        reg.update().catch(() => {});
-
-        // Désinscrire l'ancien SW s'il existe et ne gérait pas les navigations.
-        // Le SW v3 ne gère plus que les assets statiques.
-        // Si un ancien SW (v1/v2) est actif, on le remplace.
-        reg.addEventListener("updatefound", () => {
-          const newWorker = reg.installing;
-          if (!newWorker) return;
-          newWorker.addEventListener("statechange", () => {
-            if (newWorker.state === "activated") {
-              // Nouveau SW actif, anciens caches nettoyés par le handler "activate"
-            }
+      .getRegistrations()
+      .then((registrations) => {
+        for (const reg of registrations) {
+          reg.unregister().catch(() => {
+            // Ignore — le SW sera supprimé au prochain rechargement
           });
-        });
+        }
       })
       .catch(() => {
-        // Dégradé gracieux : l'app reste utilisable sans cache SW.
+        // Ignore
       });
 
-    // Nettoyage proactif : désinscrire les anciens SW qui pourraient
-    // encore intercepter les navigations HTML (cause d'écrans vierges).
-    navigator.serviceWorker.getRegistrations().then((registrations) => {
-      for (const reg of registrations) {
-        // On garde le SW actuel, mais on s'assure qu'il est à jour
-        reg.update().catch(() => {});
-      }
-    });
+    // Nettoyer les caches créés par les anciens SW (velora-v1, v2, v3)
+    if ("caches" in window) {
+      caches
+        .keys()
+        .then((keys) => {
+          for (const key of keys) {
+            if (key.startsWith("velora-")) {
+              caches.delete(key).catch(() => {});
+            }
+          }
+        })
+        .catch(() => {
+          // Ignore
+        });
+    }
   }, []);
 
   return null;

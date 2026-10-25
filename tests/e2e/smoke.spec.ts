@@ -45,9 +45,11 @@ test.describe("Velora — smoke", () => {
     expect(cspLine).not.toContain("script-src 'self' 'unsafe-inline'");
   });
 
-  test("le service worker est servi", async ({ page }) => {
+  test("sw.js n'est plus servi (Service Worker supprimé — fix écrans vierges F5)", async ({
+    page,
+  }) => {
     const response = await page.goto("/sw.js");
-    expect(response?.ok()).toBe(true);
+    expect(response?.status()).toBe(404);
   });
 
   test("aucun appel réseau externe n'est émis au chargement", async ({ page }) => {
