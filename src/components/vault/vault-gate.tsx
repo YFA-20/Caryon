@@ -11,6 +11,7 @@ import {
   createVault,
   isUnlocked,
   forceLock,
+  tryRestoreSessionFromDisk,
 } from "@/lib/vault/vault-service";
 import {
   parseBackup,
@@ -42,6 +43,12 @@ import { getSettings } from "@/lib/vault/goal-repository";
  * le rendu actuel et chargeait « / », laissant un écran vide pendant le
  * chargement.
  *
+ * PERSISTANCE F5 : la session survit au refresh grâce à session-persistence.ts.
+ * La clé maître est chiffrée par une clé aléatoire dans sessionStorage
+ * (survit au F5, effacée à la fermeture de l'onglet). Au chargement, on tente
+ * tryRestoreSessionFromDisk() — si ça marche, l'utilisateur reste déverrouillé.
+ * Sinon, le portail de déverrouillage s'affiche normalement.
+ *
  * FIX auto-lock : au déverrouillage, on appelle touchActivity() pour
  * réinitialiser lastActivityAt. Sinon, après un F5, lastActivityAt date
  * du chargement de la page (avant le déverrouillage), ce qui fait que
@@ -59,7 +66,7 @@ export function VaultGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      // Charge autoLockMs depuis les settings chiffrées (si déverrouillé)
+      // 1. Session déjà en mémoire (navigation interne sans F5)
       if (isUnlocked()) {
         try {
           const settings = await getSettings();
@@ -67,13 +74,29 @@ export function VaultGate({ children }: { children: React.ReactNode }) {
         } catch {
           // Ignore si les settings ne sont pas lisibles
         }
-        setStatus("unlocked");
-        // FIX: réinitialise le timer d'inactivité (persisté dans sessionStorage).
-        // useAutoLock appelle aussi touchActivity() au montage, mais on le fait
-        // ici pour le cas où le hook n'est pas encore actif.
+        if (!cancelled) setStatus("unlocked");
         touchActivity();
         return;
       }
+
+      // 2. Tentative de restauration après F5 / refresh.
+      // La clé maître est chiffrée dans IndexedDB, déchiffrée par une clé
+      // de session dans sessionStorage (survit au F5, effacée à la fermeture
+      // de l'onglet). Si la restauration réussit, l'utilisateur reste connecté.
+      const restored = await tryRestoreSessionFromDisk();
+      if (restored && !cancelled) {
+        try {
+          const settings = await getSettings();
+          setAutoLockMs(settings.autoLockMs);
+        } catch {
+          // Ignore
+        }
+        setStatus("unlocked");
+        touchActivity();
+        return;
+      }
+
+      // 3. Pas de session restaurable → portail de déverrouillage
       const exists = await vaultExists();
       if (!cancelled) setStatus(exists ? "locked" : "no-vault");
     })();

@@ -12,6 +12,10 @@
  * - La clé maîtresse n'est JAMAIS stockée en clair (wrappée par la KEK).
  * - La clé maîtresse déverrouillée ne vit qu'en mémoire (CryptoKey non extractible).
  * - Le verrouillage efface les références (best-effort, pas de garantie GC).
+ * - PERSISTANCE F5 : la clé maîtresse est chiffrée par une clé de session
+ *   aléatoire stockée dans sessionStorage (effacée à la fermeture de l'onglet).
+ *   Le ciphertext est dans IndexedDB. Sans la clé de session (sessionStorage),
+ *   le ciphertext est inutilisable. Voir session-persistence.ts.
  */
 import { db, type VaultRow } from "@/lib/db/database";
 import { deriveKey, generateSalt, DEFAULT_KDF_PARAMS, TEST_KDF_PARAMS } from "@/lib/crypto/kdf";
@@ -19,6 +23,12 @@ import { importAesKey, encryptBytes, decryptBytes, generateNonce } from "@/lib/c
 import { toBase64Url, fromBase64Url } from "@/lib/crypto/bytes";
 import type { EncryptedRecord } from "@/lib/schema/encrypted-record";
 import type { Vault } from "@/lib/schema/vault";
+import {
+  persistSession,
+  tryRestoreSession,
+  clearPersistedSession,
+  hasPersistedSession,
+} from "@/lib/vault/session-persistence";
 
 export interface VaultSession {
   vault: Vault;
@@ -36,9 +46,13 @@ export function getSession(): VaultSession | null {
   return session;
 }
 
-/** Efface la session (verrouillage). Best-effort : le GC JS n'est pas déterministe. */
+/**
+ * Efface la session (verrouillage). Best-effort : le GC JS n'est pas déterministe.
+ * Efface aussi la session persistée (sessionStorage + IndexedDB).
+ */
 export function lock(): void {
   session = null;
+  void clearPersistedSession();
 }
 
 /**
@@ -57,6 +71,7 @@ export function lock(): void {
  */
 export function forceLock(): void {
   session = null;
+  void clearPersistedSession();
   // Synchronise le store Zustand (import dynamique pour éviter la dépendance circulaire)
   if (typeof window !== "undefined") {
     import("@/store/vault-store").then(({ useVaultStore }) => {
@@ -95,6 +110,27 @@ async function unwrapMasterKey(
     ct as BufferSource
   );
   return importAesKey(new Uint8Array(raw));
+}
+
+/**
+ * Unwrappe la clé maître et retourne les octets bruts (pour persistance).
+ * À utiliser UNIQUEMENT pour persistSession, jamais pour stockage en clair.
+ */
+async function unwrapMasterKeyRaw(
+  kek: Uint8Array,
+  wrapped: string,
+  ivB64: string
+): Promise<Uint8Array> {
+  const kekKey = await importAesKey(kek);
+  const iv = fromBase64Url(ivB64);
+  const ct = fromBase64Url(wrapped);
+  const aad = new TextEncoder().encode(JSON.stringify({ purpose: "wrap-master-key" }));
+  const raw = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: iv as BufferSource, additionalData: aad as BufferSource },
+    kekKey,
+    ct as BufferSource
+  );
+  return new Uint8Array(raw);
 }
 
 async function createVerifier(kek: Uint8Array): Promise<{ verifier: string; iv: string }> {
@@ -187,6 +223,8 @@ export async function createVault(
   await db.vault.add(row);
 
   session = { vault, masterKey };
+  // Persiste la session pour survivre au F5 (chiffrée par sessionStorage)
+  await persistSession(rawMasterKey);
   return vault;
 }
 
@@ -226,8 +264,52 @@ export async function unlockVault(
   };
 
   session = { vault, masterKey };
+
+  // Persiste la session pour survivre au F5.
+  // Pour cela, on a besoin de la clé maître brute. On la déchiffre à nouveau
+  // depuis le wrapped (l'opération est rapide, ~1ms avec AES-GCM).
+  const rawMasterKey = await unwrapMasterKeyRaw(kek, row.wrappedMasterKey, row.wrapIv);
+  await persistSession(rawMasterKey);
+
   return vault;
 }
+
+/**
+ * Tente de restaurer la session après un F5 / refresh.
+ * Si une session persistée existe (sessionStorage + IndexedDB),
+ * déchiffre la clé maître et restaure la session en mémoire.
+ * Retourne true si la restauration a réussi.
+ *
+ * SÉCURITÉ : la clé de session est dans sessionStorage (effacée à la fermeture
+ * de l'onglet). Si elle n'existe plus, la restauration échoue silencieusement
+ * et l'utilisateur doit se déverrouiller avec sa phrase secrète.
+ */
+export async function tryRestoreSessionFromDisk(): Promise<boolean> {
+  const rawMasterKey = await tryRestoreSession();
+  if (!rawMasterKey) return false;
+
+  const row = await db.vault.toCollection().first();
+  if (!row) return false;
+
+  const masterKey = await importAesKey(rawMasterKey);
+  const vault: Vault = {
+    id: row.id,
+    version: row.version,
+    createdAt: row.createdAt,
+    kdf: row.kdf,
+    salt: row.salt,
+    wrappedMasterKey: row.wrappedMasterKey,
+    wrapIv: row.wrapIv,
+    verifier: row.verifier,
+    verifierIv: row.verifierIv,
+    autoLockMs: row.autoLockMs,
+  };
+
+  session = { vault, masterKey };
+  return true;
+}
+
+export { hasPersistedSession };
 
 export async function encryptRecord(
   data: unknown,

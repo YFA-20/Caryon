@@ -38,6 +38,7 @@ async function extractHashes(html) {
 }
 
 const HEADER_TEMPLATE = `/*
+  Cache-Control: no-cache
   Content-Security-Policy: __CSP__
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
