@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { Bell, FlaskConical, Lock, Unlock } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Bell, FlaskConical, Lock, Menu, Unlock } from "lucide-react";
 import { useUiStore } from "@/store/ui-store";
 import { useVaultStore } from "@/store/vault-store";
 import { forceLock } from "@/lib/vault/vault-service";
-import { clearDemoData } from "@/lib/vault/demo-data-service";
-import { saveSettings } from "@/lib/vault/goal-repository";
+import { clearDemoData, seedDemoData, hasExistingData } from "@/lib/vault/demo-data-service";
+import { getSettings, saveSettings } from "@/lib/vault/goal-repository";
 import { toastSuccess, toastError } from "@/store/toast-store";
 import {
   getNotificationPermission,
@@ -26,7 +26,7 @@ const NOTIFICATION_LABELS: Record<NotificationPermissionState, string> = {
 };
 
 export function Header() {
-  const { demoMode, firstName, setDemoMode } = useUiStore();
+  const { demoMode, drawerOpen, firstName, setDemoMode, setDrawerOpen } = useUiStore();
   const { status } = useVaultStore();
   const unlocked = status === "unlocked";
   const [notifPermission, setNotifPermission] = useState<NotificationPermissionState>(() =>
@@ -34,6 +34,16 @@ export function Header() {
   );
   const [notifMessage, setNotifMessage] = useState<string | null>(null);
   const [exitingDemo, setExitingDemo] = useState(false);
+  const [enteringDemo, setEnteringDemo] = useState(false);
+
+  // Synchronise demoMode depuis les settings chiffrés au chargement.
+  // Le store UI part à false par défaut ; sans cette synchro, le bouton
+  // "Quitter la démo" n'apparaît pas après un F5 si le mode était déjà actif.
+  useEffect(() => {
+    getSettings()
+      .then((s) => setDemoMode(s.demoMode))
+      .catch(() => {});
+  }, [setDemoMode]);
 
   async function handleToggleNotifications() {
     setNotifMessage(null);
@@ -92,8 +102,52 @@ export function Header() {
     }
   }
 
+  /**
+   * Active le mode démonstration depuis le header.
+   * Comportement IDENTIQUE à /parametres :
+   * - Si des données réelles existent, on avertit (toast) et on n'active pas.
+   * - Sinon on seed les données fictives + saveSettings + setDemoMode.
+   *
+   * ⚠️ Ne touche pas au comportement du mode démo, juste un raccourci.
+   */
+  async function handleEnterDemo() {
+    if (enteringDemo) return;
+    setEnteringDemo(true);
+    try {
+      const dataExists = await hasExistingData();
+      if (dataExists) {
+        toastError(
+          "Vous avez déjà des données réelles. Désactivez d'abord le mode démo depuis les paramètres, ou supprimez vos données."
+        );
+        return;
+      }
+      const result = await seedDemoData();
+      await saveSettings({ demoMode: true });
+      setDemoMode(true);
+      toastSuccess(
+        `Mode démonstration activé : ${result.applications} candidatures, ${result.documents} documents, ${result.events} événements créés.`
+      );
+    } catch (err) {
+      console.error("[header] Erreur activation démo:", err);
+      toastError("Erreur lors de l'activation du mode démonstration.");
+    } finally {
+      setEnteringDemo(false);
+    }
+  }
+
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-subtle bg-surface/80 px-4 backdrop-blur-md md:px-8">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-subtle bg-surface/80 px-3 backdrop-blur-md sm:gap-4 md:px-8">
+      {/* Bouton hamburger — visible uniquement sur mobile */}
+      <button
+        type="button"
+        onClick={() => setDrawerOpen(true)}
+        aria-label="Ouvrir le menu de navigation"
+        aria-expanded={drawerOpen}
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-secondary transition-colors hover:bg-card hover:text-primary md:hidden"
+      >
+        <Menu className="h-5 w-5" aria-hidden />
+      </button>
+
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm text-secondary">{formatDateFr(todayIso())}</p>
       </div>
@@ -107,13 +161,27 @@ export function Header() {
         </Badge>
       </div>
 
+      {/* Bouton Mode démo — visible quand le mode est INACTIF */}
+      {!demoMode && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleEnterDemo}
+          disabled={enteringDemo}
+          title="Activer le mode démonstration (données fictives)"
+        >
+          <FlaskConical className="h-4 w-4" aria-hidden />
+          <span className="hidden sm:inline">{enteringDemo ? "Activation…" : "Mode démo"}</span>
+        </Button>
+      )}
+
+      {/* Bouton Quitter la démo — visible quand le mode est ACTIF */}
       {demoMode && (
         <Button
           variant="ghost"
           size="sm"
           onClick={handleExitDemo}
           disabled={exitingDemo}
-          aria-pressed={demoMode}
           title="Quitter le mode démonstration et supprimer les données fictives"
         >
           <FlaskConical className="h-4 w-4" aria-hidden />
@@ -166,7 +234,7 @@ export function Header() {
       </Button>
 
       <div
-        className="flex h-9 w-9 items-center justify-center rounded-full bg-card-elevated text-sm font-semibold text-rose shadow-glow"
+        className="hidden h-9 w-9 items-center justify-center rounded-full bg-card-elevated text-sm font-semibold text-rose shadow-glow sm:flex"
         aria-hidden
       >
         {(firstName || "V").charAt(0).toUpperCase()}

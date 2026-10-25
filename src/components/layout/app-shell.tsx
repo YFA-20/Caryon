@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { Header } from "./header";
+import { MobileDrawer } from "./mobile-drawer";
 import { MobileNav } from "./mobile-nav";
 import { Sidebar } from "./sidebar";
 import { PwaRegister } from "@/components/pwa-register";
@@ -14,7 +15,7 @@ import { useNotificationScheduler } from "@/hooks/use-notification-scheduler";
 import { useGlobalShortcuts } from "@/hooks/use-global-shortcuts";
 
 /**
- * Velora — shell applicatif : sidebar (desktop) + barre inférieure (mobile) + header.
+ * Velora — shell applicatif : sidebar (desktop) + drawer + barre inférieure (mobile) + header.
  *
  * Intègre les hooks transverses actifs quand le coffre est déverrouillé :
  * - useAutoLock : verrouillage automatique après inactivité
@@ -34,6 +35,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <DemoBanner />
         <main className="flex-1 pb-24 md:pb-10">{children}</main>
       </div>
+      <MobileDrawer />
       <MobileNav />
       <PwaRegister />
       <CommandPalette />
