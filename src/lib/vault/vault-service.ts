@@ -49,24 +49,19 @@ export function lock(): void {
  * Zustand pour que l'interface bascule immédiatement sur le portail de
  * déverrouillage (pas de page blanche).
  *
- * SÉCURITÉ : la redirection utilise `window.location.replace("/")` pour
- * éviter que l'historique du navigateur ne permette de revenir en arrière
- * sur une page avec des données en clair dans le DOM.
+ * SÉCURITÉ : on NE redirige PLUS vers « / ». Le portail de déverrouillage
+ * s'affiche sur la page actuelle grâce au store Zustand. Cela évite l'écran
+ * vierge causé par window.location.replace() pendant l'hydratation React.
+ * Les données en clair ne sont jamais dans le DOM quand verrouillé car
+ * VaultGate ne rend pas les enfants tant que status !== "unlocked".
  */
 export function forceLock(): void {
   session = null;
   // Synchronise le store Zustand (import dynamique pour éviter la dépendance circulaire)
   if (typeof window !== "undefined") {
-    // Le store est côté client uniquement
     import("@/store/vault-store").then(({ useVaultStore }) => {
       useVaultStore.getState().setStatus("locked");
     });
-    // Redirige vers la racine pour forcer le VaultGate à réafficher le portail
-    if (window.location.pathname !== "/") {
-      window.location.replace("/");
-    } else {
-      window.location.reload();
-    }
   }
 }
 
