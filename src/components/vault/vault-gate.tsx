@@ -89,6 +89,20 @@ export function VaultGate({ children }: { children: React.ReactNode }) {
     return () => clearInterval(guardInterval);
   }, [status]);
 
+  // FIX écran noir F5 : quand le coffre est verrouillé et qu'on est sur une
+  // page profonde (ex: /journal, /candidatures), Next.js output:"export" a
+  // déjà chargé le HTML statique de la page. Si la page essaie d'accéder
+  // à des données chiffrées avant que VaultGate ne soit prêt, React crash
+  // → écran noir. Solution : rediriger vers la racine où VaultGate affiche
+  // proprement l'écran de déverrouillage.
+  useEffect(() => {
+    if (status !== "locked") return;
+    if (typeof window === "undefined") return;
+    if (window.location.pathname !== "/") {
+      window.location.replace("/");
+    }
+  }, [status]);
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
