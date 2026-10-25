@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Bell, FlaskConical, Lock, Menu, Smartphone, Unlock } from "lucide-react";
 import { useUiStore } from "@/store/ui-store";
@@ -139,6 +140,17 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-subtle bg-surface/80 px-3 backdrop-blur-md sm:gap-4 md:px-8">
+      {/* Logo Velora — toujours visible */}
+      <Link
+        href="/"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-card-elevated shadow-glow transition-transform hover:scale-105"
+        aria-label="Velora — accueil"
+      >
+        <span className="font-serif text-lg font-bold text-rose" aria-hidden>
+          V
+        </span>
+      </Link>
+
       {/* Bouton hamburger — visible uniquement sur mobile */}
       <button
         type="button"
