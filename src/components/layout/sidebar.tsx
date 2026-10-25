@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Lock, Search } from "lucide-react";
+import { Lock, Search, Unlock } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { useVaultStore } from "@/store/vault-store";
 import { NAV_GROUPS } from "./nav-items";
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { status } = useVaultStore();
+  const unlocked = status === "unlocked";
   return (
     <aside
       className="hidden w-72 shrink-0 flex-col border-r border-subtle bg-surface md:flex"
@@ -74,9 +77,15 @@ export function Sidebar() {
 
       <div className="border-t border-subtle p-4">
         <div className="card flex items-center gap-3 p-3">
-          <Lock className="h-4 w-4 shrink-0 text-lavender" aria-hidden />
+          {unlocked ? (
+            <Unlock className="h-4 w-4 shrink-0 text-success" aria-hidden />
+          ) : (
+            <Lock className="h-4 w-4 shrink-0 text-lavender" aria-hidden />
+          )}
           <div className="min-w-0">
-            <p className="text-xs font-medium text-primary">Coffre verrouillé</p>
+            <p className="text-xs font-medium text-primary">
+              {unlocked ? "Coffre déverrouillé" : "Coffre verrouillé"}
+            </p>
             <p className="truncate text-[11px] text-secondary">Vos données sont chiffrées</p>
           </div>
         </div>

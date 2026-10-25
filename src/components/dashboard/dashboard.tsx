@@ -12,7 +12,6 @@ import { APPLICATION_STATUS_LABELS, type Application } from "@/lib/schema/applic
 import type { CalendarEvent } from "@/lib/schema/calendar";
 import { formatDateFr } from "@/lib/utils/date";
 import { AppShell } from "@/components/layout/app-shell";
-import { DemoBanner } from "@/components/common/demo-banner";
 import { EmptyState } from "./empty-state";
 import { FollowUpSection } from "./follow-up-section";
 import { PipelineChart } from "./pipeline-chart";
@@ -22,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardElevated, CardTitle } from "@/components/ui/card";
 
 export function Dashboard() {
-  const { demoMode, firstName } = useUiStore();
+  const { firstName } = useUiStore();
 
   // Données réelles (chiffrées) — inclut les données démo seedées quand demoMode est actif
   const [realApps, setRealApps] = useState<Application[]>([]);
@@ -74,8 +73,6 @@ export function Dashboard() {
   return (
     <AppShell>
       <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
-        {demoMode ? <DemoBanner /> : null}
-
         {/* En-tête de page */}
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>

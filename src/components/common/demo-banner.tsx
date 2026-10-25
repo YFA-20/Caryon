@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { FlaskConical, Trash2, X } from "lucide-react";
-import { getSettings, saveSettings } from "@/lib/vault/goal-repository";
+import { saveSettings } from "@/lib/vault/goal-repository";
 import { clearDemoData } from "@/lib/vault/demo-data-service";
 import { useUiStore } from "@/store/ui-store";
 import { toastSuccess, toastError } from "@/store/toast-store";
@@ -21,16 +21,16 @@ import { cn } from "@/lib/utils/cn";
  * 3. Met à jour le store UI
  */
 export function DemoBanner() {
-  const { setDemoMode } = useUiStore();
   const [visible, setVisible] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [exiting, setExiting] = useState(false);
 
+  // Lit demoMode depuis le store UI (synchronisé depuis les settings chiffrés
+  // par le Header au chargement) — source de vérité unique, pas de double fetch.
+  const { demoMode, setDemoMode } = useUiStore();
   useEffect(() => {
-    getSettings()
-      .then((s) => setVisible(s.demoMode))
-      .catch(() => setVisible(false));
-  }, []);
+    setVisible(demoMode);
+  }, [demoMode]);
 
   async function handleExitDemo() {
     if (exiting) return;
