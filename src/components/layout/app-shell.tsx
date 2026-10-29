@@ -10,6 +10,7 @@ import { ToastContainer } from "@/components/common/toast-container";
 import { DemoBanner } from "@/components/common/demo-banner";
 import { OnboardingWizard } from "@/components/onboarding/onboarding-wizard";
 import { useAutoLock } from "@/hooks/use-auto-lock";
+import { useAutoSync } from "@/hooks/use-auto-sync";
 import { useNotificationScheduler } from "@/hooks/use-notification-scheduler";
 import { useGlobalShortcuts } from "@/hooks/use-global-shortcuts";
 
@@ -18,11 +19,13 @@ import { useGlobalShortcuts } from "@/hooks/use-global-shortcuts";
  *
  * Intègre les hooks transverses actifs quand le coffre est déverrouillé :
  * - useAutoLock : verrouillage automatique après inactivité
+ * - useAutoSync : synchronisation multi-appareils (périodique + focus)
  * - useNotificationScheduler : rappels locaux des événements à venir
  * - CommandPalette : recherche globale Ctrl+K
  */
 export function AppShell({ children }: { children: ReactNode }) {
   useAutoLock();
+  useAutoSync();
   useNotificationScheduler();
   useGlobalShortcuts();
 

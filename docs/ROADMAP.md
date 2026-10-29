@@ -65,10 +65,13 @@ detection de modification (GCM), restauration, aucun appel reseau pour les opera
 - [x] Indicateur de sync dans le header (badge)
 - [x] CSP : domaine Worker dans `connect-src`
 - [x] CI : workflow de déploiement du Worker
-- [ ] Appairage appareils (UI code 6 chiffres / QR code)
-- [ ] Sync incrémentale automatique (deltas, last-write-wins) — base posée, UI auto à venir
-- [ ] Révocation d'appareils (UI)
-- [ ] Restauration multi-appareils (UI)
+- [x] UI appairage : page `/appairage` (génération code 6 chiffres + saisie + polling)
+- [x] Preuve de possession (HMAC dérivée du coffre) — `src/lib/sync/pairing-proof.ts`
+- [x] Liste des appareils appairés + révocation (UI)
+- [x] Sync automatique : hook `useAutoSync` (périodique 5 min + focus + visibilité)
+- [x] Navigation : item « Appairage » + recherche globale (Ctrl+K)
+- [ ] Appairage : liste des demandes en attente côté appareil A (endpoint `/pairing/pending`)
+- [ ] Restauration multi-appareils (nouvel appareil depuis un backup cloud)
 
 ## 🔲 Phase 4 — Production & Release (v1.0.0)
 

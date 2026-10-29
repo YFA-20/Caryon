@@ -211,6 +211,12 @@ describe("globalSearch", () => {
     expect(pageResult).toBeTruthy();
   });
 
+  it("trouve la page appairage", () => {
+    const results = globalSearch(makeData(), "appairage");
+    const pageResult = results.find((r) => r.type === "page" && r.href === "/appairage");
+    expect(pageResult).toBeTruthy();
+  });
+
   it("trie par score décroissant", () => {
     const results = globalSearch(makeData(), "atelier");
     for (let i = 1; i < results.length; i++) {
