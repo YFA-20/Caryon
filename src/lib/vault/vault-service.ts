@@ -311,6 +311,29 @@ export async function tryRestoreSessionFromDisk(): Promise<boolean> {
 
 export { hasPersistedSession };
 
+/**
+ * Restaure une session en mémoire depuis un coffre restauré depuis le cloud.
+ * Utilisé par vault-meta-service (restauration multi-appareils) : le coffre
+ * est déjà créé dans IndexedDB, il faut juste remettre la session en mémoire.
+ *
+ * SÉCURITÉ : identique à unlockVault — la clé maître est importée non-extractible,
+ * la session est persistée (chiffrée par sessionStorage) pour survivre au F5.
+ */
+export async function setSessionForRestore(
+  vault: Vault,
+  masterKey: CryptoKey,
+  rawMasterKey: Uint8Array
+): Promise<void> {
+  session = { vault, masterKey };
+  await persistSession(rawMasterKey);
+  // Synchronise le store Zustand.
+  if (typeof window !== "undefined") {
+    const { useVaultStore } = await import("@/store/vault-store");
+    useVaultStore.getState().setStatus("unlocked");
+    useVaultStore.getState().setAutoLockMs(vault.autoLockMs);
+  }
+}
+
 export async function encryptRecord(
   data: unknown,
   aad: Record<string, string | number> = {}

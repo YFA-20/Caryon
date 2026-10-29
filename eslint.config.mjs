@@ -20,6 +20,7 @@ const config = [
       "*.config.ts",
       "*.config.mjs",
       "next-env.d.ts",
+      "worker/**",
     ],
   },
   js.configs.recommended,
@@ -43,7 +44,10 @@ const config = [
       "no-restricted-globals": ["error", "event", "fdescribe", "fit", "xdescribe", "xit"],
       // Qualité TypeScript stricte : pas de contournement silencieux
       "@typescript-eslint/no-explicit-any": "error",
-      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
       "@typescript-eslint/consistent-type-imports": ["error", { prefer: "type-imports" }],
       // React / accessibilité
       "react/no-danger": "error",

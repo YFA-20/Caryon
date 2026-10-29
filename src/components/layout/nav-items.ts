@@ -12,6 +12,7 @@ import {
   CalendarDays,
   FileText,
   LayoutDashboard,
+  Link2,
   NotebookPen,
   Save,
   Settings,
@@ -59,6 +60,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: "Sécurité et confidentialité", href: "/securite", icon: ShieldCheck },
       { label: "Sauvegardes", href: "/sauvegardes", icon: Save },
+      { label: "Appairage", href: "/appairage", icon: Link2 },
       { label: "Paramètres", href: "/parametres", icon: Settings },
     ],
   },

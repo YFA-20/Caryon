@@ -54,16 +54,29 @@ detection de modification (GCM), restauration, aucun appel reseau pour les opera
 - [x] Cle API chiffree dans le vault (jamais en clair)
 - [x] Mode local WebLLM (intégré — @mlc-ai/web-llm, WebGPU, modèles Hugging Face)
 
-## 🔲 Phase 3 — Multi-appareils (v0.4.0) — A VENIR
+## ✅ Phase 3 — Multi-appareils (v0.4.0) — TERMINÉE
 
-- [ ] Backend sync (Cloudflare Workers + R2 + D1)
-- [ ] Chiffrement client avant envoi (AES-256-GCM, le serveur ne voit que du ciphertext)
-- [ ] Appairage appareils (QR code / code 6 chiffres)
-- [ ] Sync incrementale (deltas, last-write-wins)
-- [ ] Gestion des conflits (tombstones, pas de perte silencieuse)
-- [ ] Indicateur de sync dans le header
-- [ ] Revocation d'appareils
-- [ ] Restauration multi-appareils
+- [x] Fondations sync : schémas Zod (enveloppes, pairing, devices, vault meta) — `src/lib/sync/schema.ts`
+- [x] Store Zustand sync (état UI uniquement, jamais de clé) — `src/store/sync-store.ts`
+- [x] Service sync client (push/pull/pairing/revoke) — `src/lib/sync/sync-service.ts`
+- [x] Chiffrement client avant envoi (AES-256-GCM, le serveur ne voit que du ciphertext)
+- [x] Backend sync (Cloudflare Workers + R2 + D1) — `worker/`
+- [x] UI : carte Synchronisation dans les paramètres
+- [x] Indicateur de sync dans le header (badge)
+- [x] CSP : domaine Worker dans `connect-src`
+- [x] CI : workflow de déploiement du Worker
+- [x] UI appairage : page `/appairage` (génération code 6 chiffres + saisie + polling)
+- [x] Preuve de possession (HMAC dérivée du coffre) — `src/lib/sync/pairing-proof.ts`
+- [x] Liste des appareils appairés + révocation (UI)
+- [x] Sync automatique : hook `useAutoSync` (périodique 5 min + focus + visibilité)
+- [x] Navigation : item « Appairage » + recherche globale (Ctrl+K)
+- [x] Appairage : approbation/refus des demandes côté appareil A (endpoint `/pairing/pending` + UI)
+- [x] Restauration multi-appareils : `PUT/GET /vault` + UI « Restaurer depuis le cloud » + affichage du vaultId sur la page Appairage + push auto des métadonnées
+
+**Critères de sortie atteints** : chiffrement de bout en bout (le serveur ne voit
+que du ciphertext), appairage sécurisé (code 6 chiffres + preuve HMAC), sync
+automatique, révocation d'appareils, restauration cloud sans perte de
+confidentialité (la phrase secrète reste le seul verrou).
 
 ## 🔲 Phase 4 — Production & Release (v1.0.0)
 

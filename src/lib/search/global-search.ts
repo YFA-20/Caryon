@@ -133,6 +133,14 @@ const STATIC_PAGES: SearchResult[] = [
     score: 0,
   },
   {
+    id: "page-appairage",
+    type: "page",
+    title: "Appairage",
+    subtitle: "Synchronisation multi-appareils",
+    href: "/appairage",
+    score: 0,
+  },
+  {
     id: "page-parametres",
     type: "page",
     title: "Paramètres",

@@ -87,9 +87,14 @@ describe("NAV_GROUPS — structure de navigation", () => {
     }
   });
 
-  it("total de 13 items répartis en 5 + 5 + 3", () => {
+  it("total de 14 items répartis en 5 + 5 + 4", () => {
     expect(NAV_GROUPS[0]!.items).toHaveLength(5); // Mon espace
     expect(NAV_GROUPS[1]!.items).toHaveLength(5); // Ma carrière
-    expect(NAV_GROUPS[2]!.items).toHaveLength(3); // Mon coffre-fort
+    expect(NAV_GROUPS[2]!.items).toHaveLength(4); // Mon coffre-fort
+  });
+
+  it("la page appairage est présente dans Mon coffre-fort", () => {
+    const hrefs = NAV_GROUPS.flatMap((g) => g.items.map((i) => i.href));
+    expect(hrefs).toContain("/appairage");
   });
 });

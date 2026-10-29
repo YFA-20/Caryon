@@ -130,6 +130,8 @@ export async function getSettings(): Promise<VaultSettings> {
       aiProvider: "local",
       aiApiKey: "",
       aiModel: "",
+      syncEnabled: false,
+      syncEndpoint: "",
       updatedAt: new Date().toISOString(),
     };
   }
@@ -151,6 +153,8 @@ export async function getSettings(): Promise<VaultSettings> {
           aiProvider: "local",
           aiApiKey: "",
           aiModel: "",
+          syncEnabled: false,
+          syncEndpoint: "",
           updatedAt: new Date().toISOString(),
         };
   } catch {
@@ -166,6 +170,8 @@ export async function getSettings(): Promise<VaultSettings> {
       aiProvider: "local",
       aiApiKey: "",
       aiModel: "",
+      syncEnabled: false,
+      syncEndpoint: "",
       updatedAt: new Date().toISOString(),
     };
   }
