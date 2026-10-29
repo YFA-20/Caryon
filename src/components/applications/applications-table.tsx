@@ -289,7 +289,7 @@ export function ApplicationsTable({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-subtle text-left text-xs uppercase tracking-wider text-secondary">
-              <th className="w-10 px-4 py-3">
+              <th scope="col" className="w-10 px-4 py-3">
                 <button
                   type="button"
                   onClick={toggleAll}
@@ -306,12 +306,13 @@ export function ApplicationsTable({
                 </button>
               </th>
               {COLUMNS.map((col) => (
-                <th key={col.key} className="px-4 py-3 font-medium">
+                <th key={col.key} scope="col" className="px-4 py-3 font-medium">
                   {col.sortable ? (
                     <button
                       type="button"
                       onClick={() => handleSort(col.key)}
                       className="inline-flex items-center gap-1 hover:text-primary"
+                      aria-label={`Trier par ${col.label}`}
                     >
                       {col.label}
                       {sort.column === col.key ? (
@@ -329,7 +330,9 @@ export function ApplicationsTable({
                   )}
                 </th>
               ))}
-              <th className="px-4 py-3 text-right font-medium">Actions</th>
+              <th scope="col" className="px-4 py-3 text-right font-medium">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>

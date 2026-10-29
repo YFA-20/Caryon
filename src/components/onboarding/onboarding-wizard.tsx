@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { getSettings, saveSettings } from "@/lib/vault/goal-repository";
 import { requestNotificationPermission } from "@/lib/notifications/notification-service";
+import { useFocusTrap } from "@/hooks/use-focus-trap";
 import { cn } from "@/lib/utils/cn";
 
 interface Step {
@@ -79,6 +80,7 @@ const STEPS: Step[] = [
 export function OnboardingWizard() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const dialogRef = useFocusTrap<HTMLDivElement>(open);
   const [step, setStep] = useState(0);
   const [enablingNotifs, setEnablingNotifs] = useState(false);
 
@@ -128,10 +130,12 @@ export function OnboardingWizard() {
 
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md"
       role="dialog"
       aria-modal="true"
       aria-label="Guide de démarrage"
+      tabIndex={-1}
     >
       <Card className="relative w-full max-w-lg p-8">
         <button

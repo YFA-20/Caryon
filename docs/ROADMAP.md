@@ -84,7 +84,7 @@ confidentialité (la phrase secrète reste le seul verrou).
 - [x] Dependabot configuré (`.github/dependabot.yml` — racine, worker, GitHub Actions)
 - [ ] Tag `v0.4.0` + release GitHub (notes de release auto — à créer après merge)
 - [ ] Audit de sécurité externe (optionnel)
-- [ ] Accessibilité WCAG 2.2 AA (audit complet)
+- [x] Accessibilité WCAG 2.2 AA (audit complet + corrections — `docs/A11Y.md`)
 - [x] Documentation utilisateur (guide complet `docs/USER-GUIDE.md` + FAQ)
 - [x] Choix de licence (MIT — `LICENSE` + `package.json`)
 

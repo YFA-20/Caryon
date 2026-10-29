@@ -583,9 +583,9 @@ function CandidaturesPageInner() {
               <Card key={app.id} className="p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h3 className="truncate font-serif text-lg font-semibold text-primary">
+                    <h2 className="truncate font-serif text-lg font-semibold text-primary">
                       {app.position}
-                    </h3>
+                    </h2>
                     <p className="truncate text-sm text-secondary">{app.company}</p>
                   </div>
                   <Badge className={STATUS_COLORS[app.status]}>
