@@ -8,6 +8,7 @@ registries:
     url: https://registry.npmjs.org/
 
 updates:
+  # --- Application principale (racine) ---
   - package-ecosystem: npm
     directory: "/"
     schedule:
@@ -17,11 +18,9 @@ updates:
       timezone: "Europe/Paris"
     open-pull-requests-limit: 5
     groups:
-      # Regroupe les mises à jour patch/minor non critiques
       all-minor-patch:
         patterns: ["*"]
         update-types: ["minor", "patch"]
-      # Les mises à jour majeures restent des PR individuelles (revue attentive)
     reviewers:
       - "YFA-20"
     labels:
@@ -31,11 +30,34 @@ updates:
       prefix: "chore(deps)"
       include: scope
     rebase-strategy: auto
-    # Les PR de sécurité sont prioritaires et hors groupe
     allow:
       - dependency-type: direct
       - dependency-type: indirect
 
+  # --- Worker Cloudflare (Phase 3) ---
+  - package-ecosystem: npm
+    directory: "/worker"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:15"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 3
+    groups:
+      all-worker-deps:
+        patterns: ["*"]
+    reviewers:
+      - "YFA-20"
+    labels:
+      - "chore"
+      - "dependencies"
+      - "worker"
+    commit-message:
+      prefix: "chore(deps-worker)"
+      include: scope
+    rebase-strategy: auto
+
+  # --- GitHub Actions ---
   - package-ecosystem: github-actions
     directory: "/"
     schedule:

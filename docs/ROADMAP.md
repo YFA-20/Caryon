@@ -78,15 +78,15 @@ que du ciphertext), appairage sécurisé (code 6 chiffres + preuve HMAC), sync
 automatique, révocation d'appareils, restauration cloud sans perte de
 confidentialité (la phrase secrète reste le seul verrou).
 
-## 🔲 Phase 4 — Production & Release (v1.0.0)
+## 🔄 Phase 4 — Production & Release (v1.0.0) — EN COURS
 
-- [ ] Protection de la branche `main` (GitHub branch protection)
-- [ ] Dependabot configure (`.github/dependabot.yml`)
-- [ ] Tag `v0.2.0` + release GitHub (notes de release auto)
-- [ ] Audit de securite externe (optionnel)
-- [ ] Accessibilite WCAG 2.2 AA (audit complet)
-- [ ] Documentation utilisateur (guide, FAQ)
-- [ ] Choix de licence (actuellement proprietaire — voir #1)
+- [x] Protection de la branche `main` (GitHub branch protection + ruleset)
+- [x] Dependabot configuré (`.github/dependabot.yml` — racine, worker, GitHub Actions)
+- [ ] Tag `v0.4.0` + release GitHub (notes de release auto — à créer après merge)
+- [ ] Audit de sécurité externe (optionnel)
+- [ ] Accessibilité WCAG 2.2 AA (audit complet)
+- [x] Documentation utilisateur (guide complet `docs/USER-GUIDE.md` + FAQ)
+- [x] Choix de licence (MIT — `LICENSE` + `package.json`)
 
 ## 🐛 Bugs connus (différés)
 
@@ -98,8 +98,8 @@ confidentialité (la phrase secrète reste le seul verrou).
 
 ---
 
-## Prochaines priorites recommandees
+## Prochaines priorités recommandées
 
-1. **Phase 3 — Multi-appareils** (le gros morceau restant)
-2. **Protection branche main** (hygiene repo — à faire manuellement sur GitHub)
-3. **Phase 4 — Production v1.0.0** (accessibilité WCAG, doc utilisateur, audit externe)
+1. **Déploiement du Worker de sync** (Cloudflare D1 + R2 + wrangler — voir `docs/DEPLOYMENT.md`)
+2. **Tag v0.4.0 + release GitHub** (après merge de la branche courante)
+3. **Audit accessibilité WCAG 2.2 AA** (dernier gros morceau avant v1.0.0)

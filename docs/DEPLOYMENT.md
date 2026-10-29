@@ -130,6 +130,63 @@ Si tu préfères contrôler le déploiement depuis GitHub Actions :
   - **Commentaire** : poste l'URL de preview sur la PR (ou un message informatif si les secrets manquent).
   - **continue-on-error** : si les secrets ne sont pas configurés, le job passe en warning.
 
+## Déploiement du Worker de synchronisation (Phase 3)
+
+Le Worker de sync (`worker/`) est un **Cloudflare Worker** séparé du frontend statique.
+Il stocke uniquement du ciphertext — jamais de données en clair.
+
+### Prérequis
+
+1. Un compte Cloudflare avec accès à **Workers**, **D1** et **R2**.
+2. Le CLI `wrangler` (installé via `worker/package.json`).
+
+### Étapes de déploiement manuel
+
+```bash
+cd worker
+npm install
+
+# 1. Créer la base D1 (une seule fois)
+npx wrangler d1 create velora-sync
+# → Copier l'ID retourné dans wrangler.toml (database_id)
+
+# 2. Créer le bucket R2 (une seule fois)
+npx wrangler r2 bucket create velora-sync-payloads
+
+# 3. Appliquer le schéma SQL
+npx wrangler d1 execute velora-sync --file=./schema.sql --remote
+
+# 4. Mettre à jour wrangler.toml avec les vrais IDs
+#    database_id = "<ID D1>"
+#    ALLOWED_ORIGIN = "https://caryon.pages.dev" (ou ton domaine)
+
+# 5. Déployer
+npx wrangler deploy
+# → Le Worker est disponible sur https://velora-sync.<sous-domaine>.workers.dev
+```
+
+### Déploiement via CI (GitHub Actions)
+
+Le workflow `.github/workflows/deploy-worker.yml` déploie automatiquement le Worker
+à chaque push sur `main` (si les fichiers `worker/**` changent).
+
+**Secrets GitHub requis** (Settings → Secrets → Actions) :
+
+| Secret                  | Description                                  |
+| ----------------------- | -------------------------------------------- |
+| `CLOUDFLARE_ACCOUNT_ID` | ID du compte Cloudflare                      |
+| `CLOUDFLARE_API_TOKEN`  | Token API avec permissions Workers + D1 + R2 |
+
+> Le job est `continue-on-error: true` tant que les secrets ne sont pas configurés.
+
+### Vérification post-déploiement
+
+- [ ] Le healthcheck (`GET /health`) retourne `ok: true`.
+- [ ] La CSP du frontend autorise le domaine du Worker (`connect-src`).
+- [ ] Depuis l'app Velora, la synchronisation manuelle fonctionne (Paramètres → Synchroniser maintenant).
+
+---
+
 ## Rollback
 
 1. Dans Cloudflare Pages, onglet **Deployments** : identifier le déploiement précédent stable.
