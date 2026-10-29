@@ -1,4 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { createVaultAndUnlock, resetStorage } from "./helpers";
 
 /**
  * Les tests dashboard supposent un coffre existant et déverrouillé.
@@ -6,40 +7,10 @@ import { expect, test, type Page } from "@playwright/test";
  * beforeEach via l'UI (comme un vrai utilisateur), puis on attend
  * que le dashboard soit rendu.
  */
-const PASSPHRASE = "phrase-de-test-e2e-123456";
-
-async function createVaultAndUnlock(page: Page) {
-  await page.goto("/");
-  // Portail "Créer votre coffre-fort" (IndexedDB vide)
-  await expect(page.getByRole("heading", { name: "Créer votre coffre-fort" })).toBeVisible({
-    timeout: 15_000,
-  });
-  await page.getByLabel("Phrase secrète").first().fill(PASSPHRASE);
-  await page.getByLabel("Confirmer la phrase").fill(PASSPHRASE);
-  await page.getByRole("button", { name: "Créer le coffre" }).click();
-  // L'onboarding wizard s'affiche après création : on le saute s'il est visible
-  const skipBtn = page.getByRole("button", { name: "Passer le guide" });
-  if (await skipBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-    await skipBtn.click();
-  }
-  // Après création, le dashboard s'affiche (session déverrouillée)
-  await expect(page.getByRole("heading", { name: /Bonjour|Bonsoir|Bonne après-midi/ })).toBeVisible(
-    { timeout: 30_000 }
-  );
-}
 
 test.describe("Velora — dashboard « Aujourd'hui »", () => {
   test.beforeEach(async ({ page, context }) => {
-    await context.clearCookies();
-    await page.goto("/");
-    await page.evaluate(() => {
-      return new Promise<void>((resolve) => {
-        const req = indexedDB.deleteDatabase("velora");
-        req.onsuccess = () => resolve();
-        req.onerror = () => resolve();
-        req.onblocked = () => resolve();
-      });
-    });
+    await resetStorage(page, context);
     await createVaultAndUnlock(page);
   });
 
@@ -65,9 +36,10 @@ test.describe("Velora — dashboard « Aujourd'hui »", () => {
 
   test("le mode démo affiche le bandeau « données fictives » et les indicateurs", async ({
     page,
+    isMobile,
   }) => {
     test.setTimeout(90000);
-    // Le bouton "Mode démo" est dans le header, visible en desktop
+    test.skip(isMobile, "Le bouton Mode démo est dans le header desktop");
     await page.getByRole("button", { name: "Mode démo" }).click();
     await expect(page.getByRole("status")).toContainText("Mode démonstration");
     await expect(page.getByText(/données affichées sont fictives/)).toBeVisible();
@@ -78,8 +50,9 @@ test.describe("Velora — dashboard « Aujourd'hui »", () => {
     await expect(page.getByText("Réponses +", { exact: true })).toBeVisible();
   });
 
-  test("quitter la démo restaure l'état vide", async ({ page }) => {
+  test("quitter la démo restaure l'état vide", async ({ page, isMobile }) => {
     test.setTimeout(90000);
+    test.skip(isMobile, "Le bouton Mode démo est dans le header desktop");
     await page.getByRole("button", { name: "Mode démo" }).click();
     await expect(page.getByRole("status")).toContainText("Mode démonstration");
     await page.getByRole("button", { name: "Quitter la démo" }).first().click();
@@ -110,16 +83,7 @@ test.describe("Velora — responsive mobile", () => {
     context,
   }) => {
     test.setTimeout(90000);
-    await context.clearCookies();
-    await page.goto("/");
-    await page.evaluate(() => {
-      return new Promise<void>((resolve) => {
-        const req = indexedDB.deleteDatabase("velora");
-        req.onsuccess = () => resolve();
-        req.onerror = () => resolve();
-        req.onblocked = () => resolve();
-      });
-    });
+    await resetStorage(page, context);
     await createVaultAndUnlock(page);
     // Ouvre le drawer mobile
     await page.getByRole("button", { name: "Ouvrir le menu de navigation" }).click();

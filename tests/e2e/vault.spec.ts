@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { E2E_PASSPHRASE, closeTabAndReload, createVaultAndUnlock, resetStorage } from "./helpers";
 
 /**
  * Velora — E2E : parcours coffre-fort + candidatures.
@@ -7,79 +8,24 @@ import { test, expect } from "@playwright/test";
  * 1. Onboarding : création du coffre (phrase secrète).
  * 2. Création d'une candidature.
  * 3. Modification d'une candidature (édition + dates affichées).
- * 4. Persistance après rechargement (nécessite déverrouillage).
+ * 4. Persistance après fermeture d'onglet (nécessite déverrouillage).
  * 5. Déverrouillage avec mauvaise phrase → erreur.
  * 6. Verrouillage manuel → retour à l'écran de connexion.
  */
 
-const PASSPHRASE = "phrase-de-test-e2e-123456";
-
 test.describe("Velora — coffre-fort et candidatures", () => {
   test.beforeEach(async ({ page, context }) => {
-    // Nettoie IndexedDB entre les tests
-    await context.clearCookies();
-    await page.goto("/");
-    await page.evaluate(() => {
-      return new Promise<void>((resolve) => {
-        const req = indexedDB.deleteDatabase("velora");
-        req.onsuccess = () => resolve();
-        req.onerror = () => resolve();
-        req.onblocked = () => resolve();
-      });
-    });
-    await page.reload();
-    // Attendre que le VaultGate ait fini sa résolution async (IndexedDB)
-    await expect(
-      page.getByRole("heading", { name: /Créer votre coffre-fort|Déverrouiller le coffre/ }).first()
-    ).toBeVisible({ timeout: 15000 });
+    await resetStorage(page, context);
   });
 
   test("onboarding : création du coffre puis accès au dashboard", async ({ page }) => {
     test.setTimeout(60000);
-    await page.goto("/");
-
-    // Écran de création du coffre (attend l'hydratation)
-    await expect(page.getByRole("heading", { name: /Créer votre coffre-fort/i })).toBeVisible({
-      timeout: 15000,
-    });
-
-    // Remplit le formulaire de création
-    await page
-      .getByLabel(/Phrase secrète/i)
-      .first()
-      .fill(PASSPHRASE);
-    await page.getByLabel(/Confirmer la phrase/i).fill(PASSPHRASE);
-    await page.getByRole("button", { name: /Créer le coffre/i }).click();
-    // Saute l'onboarding wizard s'il apparaît
-    const skipBtn = page.getByRole("button", { name: "Passer le guide" });
-    if (await skipBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await skipBtn.click();
-    }
-
-    // Après création, le dashboard s'affiche
-    await expect(page.getByRole("heading", { name: /Bonjour|Bonne|Bonsoir/i })).toBeVisible({
-      timeout: 30000,
-    });
+    await createVaultAndUnlock(page);
   });
 
   test("création d'une candidature et affichage dans la liste", async ({ page }) => {
     test.setTimeout(60000);
-    // Crée le coffre
-    await page.goto("/");
-    await page
-      .getByLabel(/Phrase secrète/i)
-      .first()
-      .fill(PASSPHRASE);
-    await page.getByLabel(/Confirmer la phrase/i).fill(PASSPHRASE);
-    await page.getByRole("button", { name: /Créer le coffre/i }).click();
-    // Saute l'onboarding wizard s'il apparaît
-    const skipBtn = page.getByRole("button", { name: "Passer le guide" });
-    if (await skipBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await skipBtn.click();
-    }
-    await expect(page.getByRole("heading", { name: /Bonjour|Bonne|Bonsoir/i })).toBeVisible({
-      timeout: 30000,
-    });
+    await createVaultAndUnlock(page);
 
     // Va sur la page candidatures
     await page.goto("/candidatures");
@@ -104,26 +50,11 @@ test.describe("Velora — coffre-fort et candidatures", () => {
     await expect(page.getByText("1 candidature enregistrée")).toBeVisible();
   });
 
-  test("persistance : après rechargement, déverrouillage puis données retrouvées", async ({
+  test("persistance : après fermeture d'onglet, déverrouillage puis données retrouvées", async ({
     page,
   }) => {
-    test.setTimeout(60000);
-    // Crée le coffre et une candidature
-    await page.goto("/");
-    await page
-      .getByLabel(/Phrase secrète/i)
-      .first()
-      .fill(PASSPHRASE);
-    await page.getByLabel(/Confirmer la phrase/i).fill(PASSPHRASE);
-    await page.getByRole("button", { name: /Créer le coffre/i }).click();
-    // Saute l'onboarding wizard s'il apparaît
-    const skipBtn = page.getByRole("button", { name: "Passer le guide" });
-    if (await skipBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await skipBtn.click();
-    }
-    await expect(page.getByRole("heading", { name: /Bonjour|Bonne|Bonsoir/i })).toBeVisible({
-      timeout: 30000,
-    });
+    test.setTimeout(90000);
+    await createVaultAndUnlock(page);
 
     await page.goto("/candidatures");
     await page
@@ -135,12 +66,11 @@ test.describe("Velora — coffre-fort et candidatures", () => {
     await page.getByRole("button", { name: /Enregistrer/i }).click();
     await expect(page.getByText("Studio Lumen")).toBeVisible();
 
-    // Recharge la page → le coffre est verrouillé (session en mémoire perdue)
-    await page.reload();
-    await expect(page.getByRole("heading", { name: /Déverrouiller le coffre/i })).toBeVisible();
+    // Fermeture d'onglet (sessionStorage vidé) → le coffre est verrouillé
+    await closeTabAndReload(page);
 
     // Déverrouille avec la bonne phrase
-    await page.getByLabel(/Phrase secrète/i).fill(PASSPHRASE);
+    await page.getByLabel(/Phrase secrète/i).fill(E2E_PASSPHRASE);
     await page.getByRole("button", { name: /Déverrouiller/i }).click();
 
     // Va sur candidatures → la donnée est toujours là
@@ -150,27 +80,11 @@ test.describe("Velora — coffre-fort et candidatures", () => {
   });
 
   test("déverrouillage avec une mauvaise phrase affiche une erreur", async ({ page }) => {
-    test.setTimeout(60000);
-    // Crée le coffre
-    await page.goto("/");
-    await page
-      .getByLabel(/Phrase secrète/i)
-      .first()
-      .fill(PASSPHRASE);
-    await page.getByLabel(/Confirmer la phrase/i).fill(PASSPHRASE);
-    await page.getByRole("button", { name: /Créer le coffre/i }).click();
-    // Saute l'onboarding wizard s'il apparaît
-    const skipBtn = page.getByRole("button", { name: "Passer le guide" });
-    if (await skipBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await skipBtn.click();
-    }
-    await expect(page.getByRole("heading", { name: /Bonjour|Bonne|Bonsoir/i })).toBeVisible({
-      timeout: 30000,
-    });
+    test.setTimeout(90000);
+    await createVaultAndUnlock(page);
 
-    // Recharge → verrouillé
-    await page.reload();
-    await expect(page.getByRole("heading", { name: /Déverrouiller le coffre/i })).toBeVisible();
+    // Fermeture d'onglet → verrouillé
+    await closeTabAndReload(page);
 
     // Mauvaise phrase
     await page.getByLabel(/Phrase secrète/i).fill("mauvaise-phrase-xxx");
@@ -181,23 +95,8 @@ test.describe("Velora — coffre-fort et candidatures", () => {
   });
 
   test("les autres pages sont accessibles (pas de 404)", async ({ page }) => {
-    test.setTimeout(60000);
-    // Crée le coffre
-    await page.goto("/");
-    await page
-      .getByLabel(/Phrase secrète/i)
-      .first()
-      .fill(PASSPHRASE);
-    await page.getByLabel(/Confirmer la phrase/i).fill(PASSPHRASE);
-    await page.getByRole("button", { name: /Créer le coffre/i }).click();
-    // Saute l'onboarding wizard s'il apparaît
-    const skipBtn = page.getByRole("button", { name: "Passer le guide" });
-    if (await skipBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await skipBtn.click();
-    }
-    await expect(page.getByRole("heading", { name: /Bonjour|Bonne|Bonsoir/i })).toBeVisible({
-      timeout: 30000,
-    });
+    test.setTimeout(90000);
+    await createVaultAndUnlock(page);
 
     const pages = [
       { url: "/candidatures", title: "Mes candidatures" },
@@ -219,23 +118,8 @@ test.describe("Velora — coffre-fort et candidatures", () => {
   test("modification d'une candidature : édition + dates de création/modification", async ({
     page,
   }) => {
-    test.setTimeout(60000);
-    // Crée le coffre
-    await page.goto("/");
-    await page
-      .getByLabel(/Phrase secrète/i)
-      .first()
-      .fill(PASSPHRASE);
-    await page.getByLabel(/Confirmer la phrase/i).fill(PASSPHRASE);
-    await page.getByRole("button", { name: /Créer le coffre/i }).click();
-    // Saute l'onboarding wizard s'il apparaît
-    const skipBtn = page.getByRole("button", { name: "Passer le guide" });
-    if (await skipBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await skipBtn.click();
-    }
-    await expect(page.getByRole("heading", { name: /Bonjour|Bonne|Bonsoir/i })).toBeVisible({
-      timeout: 30000,
-    });
+    test.setTimeout(90000);
+    await createVaultAndUnlock(page);
 
     // Crée une candidature
     await page.goto("/candidatures");
@@ -277,25 +161,10 @@ test.describe("Velora — coffre-fort et candidatures", () => {
 
   test("verrouillage manuel retourne à l'écran de connexion", async ({ page }) => {
     test.setTimeout(60000);
-    // Crée le coffre
-    await page.goto("/");
-    await page
-      .getByLabel(/Phrase secrète/i)
-      .first()
-      .fill(PASSPHRASE);
-    await page.getByLabel(/Confirmer la phrase/i).fill(PASSPHRASE);
-    await page.getByRole("button", { name: /Créer le coffre/i }).click();
-    // Saute l'onboarding wizard s'il apparaît
-    const skipBtn = page.getByRole("button", { name: "Passer le guide" });
-    if (await skipBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await skipBtn.click();
-    }
-    await expect(page.getByRole("heading", { name: /Bonjour|Bonne|Bonsoir/i })).toBeVisible({
-      timeout: 30000,
-    });
+    await createVaultAndUnlock(page);
 
     // Vérifie que le badge indique "Coffre déverrouillé"
-    await expect(page.getByText("Coffre déverrouillé")).toBeVisible();
+    await expect(page.getByText("Coffre déverrouillé").first()).toBeVisible();
 
     // Clique sur le bouton "Verrouiller"
     await page.getByRole("button", { name: /Verrouiller/i }).click();
