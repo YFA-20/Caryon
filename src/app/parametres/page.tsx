@@ -458,6 +458,50 @@ export default function ParametresPage() {
                   </div>
                 )}
 
+                {/* Configuration local (WebLLM) */}
+                {aiProvider === "local" && (
+                  <div className="space-y-3">
+                    <label className="block text-sm">
+                      <span className="mb-1.5 block text-secondary">Modèle local (WebLLM)</span>
+                      <select
+                        value={aiModel}
+                        onChange={(e) => setAiModel(e.target.value)}
+                        className={inputClass}
+                      >
+                        <option value="">Llama 3.2 1B (par défaut, ~700 Mo)</option>
+                        <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC">
+                          Qwen 2.5 0.5B (très léger, ~400 Mo)
+                        </option>
+                        <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC">
+                          Qwen 2.5 1.5B (léger, ~1 Go)
+                        </option>
+                        <option value="Llama-3.2-3B-Instruct-q4f16_1-MLC">
+                          Llama 3.2 3B (équilibré, ~2 Go)
+                        </option>
+                        <option value="gemma-2-2b-it-q4f16_1-MLC">
+                          Gemma 2 2B (Google, ~1.5 Go)
+                        </option>
+                      </select>
+                      <span className="mt-1 block text-xs text-secondary">
+                        Le modèle est téléchargé depuis Hugging Face lors de la première
+                        utilisation, puis mis en cache localement. Aucune donnée personnelle
+                        n&apos;est envoyée.
+                      </span>
+                    </label>
+                    <div className="flex items-start gap-2 rounded-lg border border-success/25 bg-success/5 p-3 text-xs text-secondary">
+                      <ShieldCheck
+                        className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success"
+                        aria-hidden
+                      />
+                      <span>
+                        Mode 100% local : le modèle tourne dans votre navigateur via WebGPU. Vos
+                        données ne quittent jamais votre appareil. Nécessite Chrome/Edge 113+ (ou
+                        navigateur compatible WebGPU).
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 {/* Configuration cloud */}
                 {aiProvider === "cloud" && (
                   <div className="space-y-3">

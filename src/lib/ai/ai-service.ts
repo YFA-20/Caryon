@@ -281,20 +281,32 @@ export async function callCloudAi(
 }
 
 // ---------------------------------------------------------------------------
-// Appel IA — Mode Local (WebLLM, à brancher dans le Lot 7)
+// Appel IA — Mode Local (WebLLM)
 // ---------------------------------------------------------------------------
 
 /**
  * Appel IA en mode local via WebLLM.
- * NOTE : WebLLM sera intégré dans le Lot 7. Pour l'instant, cette fonction
- * lève une erreur si le mode local n'est pas encore disponible.
+ * Le moteur est chargé dynamiquement (import()) pour ne pas alourdir le bundle.
+ * Le modèle tourne dans le navigateur via WebGPU. Aucune donnée ne quitte l'appareil.
  */
-export async function callLocalAi(_request: AiRequest): Promise<AiResponse> {
-  // Sera implémenté dans le Lot 7 avec @mlc-ai/web-llm
-  throw new AiNotAvailableError(
-    "Le mode IA local (WebLLM) sera disponible dans la prochaine mise à jour. " +
-      "Utilisez le mode cloud en attendant (clé API dans les paramètres)."
-  );
+export async function callLocalAi(
+  request: AiRequest,
+  onProgress?: (text: string, progress: number) => void
+): Promise<AiResponse> {
+  // Import dynamique du moteur WebLLM (évite le chargement systématique)
+  const { callLocalAiEngine, isWebGpuAvailable } = await import("./webllm-engine");
+
+  if (!isWebGpuAvailable()) {
+    throw new AiNotAvailableError(
+      "Le mode IA local nécessite WebGPU (Chrome/Edge 113+). " +
+        "Utilisez le mode cloud en attendant (clé API dans les paramètres)."
+    );
+  }
+
+  const settings = await getSettings();
+  const modelId = settings.aiModel || undefined;
+
+  return callLocalAiEngine(request, modelId, onProgress);
 }
 
 // ---------------------------------------------------------------------------
@@ -311,7 +323,10 @@ export async function callLocalAi(_request: AiRequest): Promise<AiResponse> {
  */
 export async function runAiTask(
   request: AiRequest,
-  options: { forceProvider?: AiProvider } = {}
+  options: {
+    forceProvider?: AiProvider;
+    onProgress?: (text: string, progress: number) => void;
+  } = {}
 ): Promise<AiResponse> {
   // 1. Vérifier le consentement
   await requireAiConsent();
@@ -323,7 +338,7 @@ export async function runAiTask(
   // 3. Essayer le fournisseur demandé, fallback sur l'autre
   if (provider === "local") {
     try {
-      return await callLocalAi(request);
+      return await callLocalAi(request, options.onProgress);
     } catch (err) {
       if (err instanceof AiNotAvailableError && settings.aiApiKey.length > 0) {
         // Fallback cloud

@@ -20,6 +20,8 @@ interface UseAiOptions {
 interface UseAiReturn {
   /** Exécute une tâche IA. */
   execute: (request: AiRequest) => Promise<AiResponse | null>;
+  /** Progression du chargement du modèle local (WebLLM). */
+  progress: { text: string; percent: number } | null;
   /** État de disponibilité IA. */
   availability: AiAvailability | null;
   /** Recharge l'état de disponibilité. */
@@ -49,6 +51,7 @@ export function useAi(_options: UseAiOptions = {}): UseAiReturn {
   const [availability, setAvailability] = useState<AiAvailability | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<{ text: string; percent: number } | null>(null);
   const [pendingPreview, setPendingPreview] = useState<{
     task: AiTask;
     dataPreview: { label: string; value: string }[];
@@ -63,8 +66,11 @@ export function useAi(_options: UseAiOptions = {}): UseAiReturn {
   const execute = useCallback(async (request: AiRequest): Promise<AiResponse | null> => {
     setError(null);
     setLoading(true);
+    setProgress(null);
     try {
-      const response = await runAiTask(request);
+      const response = await runAiTask(request, {
+        onProgress: (text, percent) => setProgress({ text, percent }),
+      });
       return response;
     } catch (err) {
       if (err instanceof AiConsentError) {
@@ -78,6 +84,7 @@ export function useAi(_options: UseAiOptions = {}): UseAiReturn {
       return null;
     } finally {
       setLoading(false);
+      setProgress(null);
     }
   }, []);
 
@@ -96,6 +103,7 @@ export function useAi(_options: UseAiOptions = {}): UseAiReturn {
     availability,
     refreshAvailability,
     loading,
+    progress,
     error,
     pendingPreview: pendingPreview
       ? { task: pendingPreview.task, dataPreview: pendingPreview.dataPreview }

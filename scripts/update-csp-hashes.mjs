@@ -93,11 +93,15 @@ function buildCsp(hashes) {
   const hashList = hashes.join(" ");
   return [
     "default-src 'self'",
-    `script-src 'self' ${hashList}`,
+    // 'wasm-unsafe-eval' : autorise WebAssembly (WebLLM) sans autoriser eval() JS.
+    // C'est le compromis CSP3 standard pour les moteurs WASM (WebLLM, ONNX, etc.).
+    `script-src 'self' 'wasm-unsafe-eval' ${hashList}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
-    "connect-src 'self'",
+    // connect-src : Hugging Face pour le téléchargement des modèles WebLLM.
+    // Restreint aux hôtes HF uniquement (pas de wildcard ouvert).
+    "connect-src 'self' https://huggingface.co https://*.hf.co https://cas-bridge.xethub.hf.co https://cdn-lfs.huggingface.co https://cdn-lfs-us-1.hf.co",
     "worker-src 'self' blob:",
     "manifest-src 'self'",
     "object-src 'none'",
