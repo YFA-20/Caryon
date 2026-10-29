@@ -79,8 +79,9 @@ Définis dans `next.config.ts` (`headers()`) et **dupliqués dans `out/_headers`
 ## Cache & PWA
 
 - Assets statiques (`/_next/static/*`, polices, icônes) : `Cache-Control: public, max-age=31536000, immutable`.
-- `manifest.webmanifest` et `sw.js` : `Cache-Control: no-cache` (mise à jour fiable de la PWA).
-- Le service worker gère lui-même le cache runtime (offline-first, network-first pour le HTML).
+- `manifest.webmanifest` : `Cache-Control: no-cache` (mise à jour fiable de la PWA).
+- HTML : `Cache-Control: no-cache` (évite les écrans vierges après F5).
+- Pas de Service Worker : les navigations HTML ne sont jamais interceptées. La PWA reste installable via le manifest.
 
 ## Option A — Déploiement via intégration native Cloudflare Pages (recommandé)
 
@@ -144,7 +145,7 @@ Si tu préfères contrôler le déploiement depuis GitHub Actions :
 - [ ] L'app se charge en HTTPS, sans erreur console.
 - [ ] **La page n'est PAS blanche** (vérifier que l'hydratation React fonctionne).
 - [ ] Le manifest PWA est servi (`/manifest.webmanifest`) et l'installation est proposée.
-- [ ] Le service worker s'enregistre ; l'app fonctionne hors ligne (DevTools → Offline).
+- [ ] Le manifest PWA est servi et l'installation est proposée (pas de Service Worker).
 - [ ] Les en-têtes de sécurité sont présents (`curl -I`).
 - [ ] La CSP contient des hashes `sha256-` et ne bloque pas l'app (aucune violation dans la console).
 
@@ -166,14 +167,13 @@ Si tu déploies manuellement, assure-toi de builder avec `npm run build` (qui in
 
 ### Ancien déploiement servi (cache navigateur)
 
-**Cause** : le navigateur ou le SW a mis en cache l'ancienne version.
+**Cause** : le navigateur a mis en cache l'ancienne version (Cache-Control: no-cache devrait éviter cela).
 
 **Solution** :
 
 1. Hard refresh : `Ctrl+Shift+R` (ou `Cmd+Shift+R` sur Mac).
-2. DevTools → Application → Service Workers → **Unregister**.
-3. DevTools → Application → Cache Storage → supprimer tous les caches.
-4. Recharger.
+2. DevTools → Application → Cache Storage → supprimer tous les caches.
+3. Recharger.
 
 ### Build échoue sur Cloudflare Pages
 

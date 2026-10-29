@@ -115,15 +115,14 @@ l'utilisateur, sur son appareil.
 │   └── store/                      # Zustand (etat UI : coffre, demo, preferences)
 │       # JAMAIS de cles ni de phrases dans le store
 ├── public/
-│   ├── manifest.webmanifest        # PWA
-│   ├── sw.js                       # Service worker (network-first HTML, cache-first assets)
-│   └── _headers                    # CSP + en-tetes de securite (hashes SHA-256 auto)
+│   ├── manifest.webmanifest        # PWA (installable, pas de Service Worker)
+│   └── _headers                    # CSP par page + en-tetes de securite (hashes SHA-256 auto)
 ├── scripts/
 │   ├── update-csp-hashes.mjs       # Postbuild : calcule les hashes des scripts inline
 │   ├── serve-static.mjs            # Serveur statique local pour E2E
 │   └── make-icons.mjs              # Generation des icones PWA
 ├── tests/
-│   ├── unit/                       # Vitest (355 tests, 34 fichiers)
+│   ├── unit/                       # Vitest (410 tests, 39 fichiers)
 │   └── e2e/                        # Playwright (CI uniquement)
 ├── docs/
 │   ├── ARCHITECTURE.md             # ce document
