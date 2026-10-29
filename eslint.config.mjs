@@ -20,6 +20,7 @@ const config = [
       "*.config.ts",
       "*.config.mjs",
       "next-env.d.ts",
+      "worker/**",
     ],
   },
   js.configs.recommended,

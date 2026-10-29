@@ -54,16 +54,21 @@ detection de modification (GCM), restauration, aucun appel reseau pour les opera
 - [x] Cle API chiffree dans le vault (jamais en clair)
 - [x] Mode local WebLLM (intégré — @mlc-ai/web-llm, WebGPU, modèles Hugging Face)
 
-## 🔲 Phase 3 — Multi-appareils (v0.4.0) — A VENIR
+## 🔄 Phase 3 — Multi-appareils (v0.4.0) — EN COURS
 
-- [ ] Backend sync (Cloudflare Workers + R2 + D1)
-- [ ] Chiffrement client avant envoi (AES-256-GCM, le serveur ne voit que du ciphertext)
-- [ ] Appairage appareils (QR code / code 6 chiffres)
-- [ ] Sync incrementale (deltas, last-write-wins)
-- [ ] Gestion des conflits (tombstones, pas de perte silencieuse)
-- [ ] Indicateur de sync dans le header
-- [ ] Revocation d'appareils
-- [ ] Restauration multi-appareils
+- [x] Fondations sync : schémas Zod (enveloppes, pairing, devices) — `src/lib/sync/schema.ts`
+- [x] Store Zustand sync (état UI uniquement, jamais de clé) — `src/store/sync-store.ts`
+- [x] Service sync client (push/pull/pairing/revoke) — `src/lib/sync/sync-service.ts`
+- [x] Chiffrement client avant envoi (AES-256-GCM, le serveur ne voit que du ciphertext)
+- [x] Backend sync (Cloudflare Workers + R2 + D1) — `worker/`
+- [x] UI : carte Synchronisation dans les paramètres
+- [x] Indicateur de sync dans le header (badge)
+- [x] CSP : domaine Worker dans `connect-src`
+- [x] CI : workflow de déploiement du Worker
+- [ ] Appairage appareils (UI code 6 chiffres / QR code)
+- [ ] Sync incrémentale automatique (deltas, last-write-wins) — base posée, UI auto à venir
+- [ ] Révocation d'appareils (UI)
+- [ ] Restauration multi-appareils (UI)
 
 ## 🔲 Phase 4 — Production & Release (v1.0.0)
 

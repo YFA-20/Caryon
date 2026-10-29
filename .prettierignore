@@ -9,3 +9,4 @@ pnpm-lock.yaml
 package-lock.json
 CHANGELOG.md
 LICENSE
+worker/

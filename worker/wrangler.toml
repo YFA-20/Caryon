@@ -1,0 +1,33 @@
+# Velora — configuration Cloudflare Worker (sync multi-appareils).
+#
+# Le Worker stocke UNIQUEMENT du ciphertext (AES-256-GCM chiffré côté client).
+# Il n'a jamais accès aux clés ni aux données en clair.
+#
+# Déploiement : `cd worker && npm install && npx wrangler deploy`
+# Variables à configurer dans le dashboard Cloudflare (ou via `wrangler secret put`) :
+#   - Aucune secret requis pour le fonctionnement de base.
+
+name = "velora-sync"
+main = "src/index.ts"
+compatibility_date = "2025-03-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Workers Paid plan requis pour D1 + R2 (ou utiliser le plan gratuit avec KV).
+# D1 : métadonnées des enregistrements (pas de contenu).
+[[d1_databases]]
+binding = "DB"
+database_name = "velora-sync"
+database_id = "REMPLACER_PAR_L_ID_D1"
+
+# R2 : stockage des payloads chiffrés (blobs opaques).
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "velora-sync-payloads"
+
+# CORS : autorise uniquement l'origine de l'app Velora.
+# À remplacer par le vrai domaine de production.
+[vars]
+ALLOWED_ORIGIN = "https://caryon.pages.dev"
+
+# Limites de rate (Workers Paid) — protection anti-abus basique.
+# 100 requêtes/minute par IP pour les endpoints de sync.

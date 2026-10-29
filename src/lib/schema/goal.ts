@@ -84,6 +84,10 @@ export const vaultSettingsSchema = z.object({
   aiApiKey: z.string().max(500).default(""),
   /** Nom du modèle cloud préféré (ex: "gpt-4o-mini", "claude-3-haiku") */
   aiModel: z.string().max(100).default(""),
+  /** Synchronisation multi-appareils activée (opt-in, OFF par défaut) */
+  syncEnabled: z.boolean().default(false),
+  /** URL du serveur de synchronisation (Cloudflare Worker) */
+  syncEndpoint: z.string().max(200).default(""),
   updatedAt: z.string().datetime(),
 });
 

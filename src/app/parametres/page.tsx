@@ -4,7 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import {
   AlertTriangle,
   FlaskConical,
+  Link2,
   Loader2,
+  RefreshCw,
   Save,
   Settings,
   ShieldCheck,
@@ -26,6 +28,7 @@ import {
 import { toastSuccess, toastError } from "@/store/toast-store";
 import { useVaultStore } from "@/store/vault-store";
 import { useUiStore } from "@/store/ui-store";
+import { useSyncStore } from "@/store/sync-store";
 import { forceLock } from "@/lib/vault/vault-service";
 
 const AUTO_LOCK_OPTIONS = [
@@ -69,6 +72,14 @@ export default function ParametresPage() {
   const [savedAi, setSavedAi] = useState(false);
   const [errorAi, setErrorAi] = useState<string | null>(null);
 
+  // Synchronisation multi-appareils (Phase 3)
+  const { status: syncStatus, lastSyncAt, lastError: syncError, deviceId } = useSyncStore();
+  const [syncEnabled, setSyncEnabled] = useState(false);
+  const [syncEndpoint, setSyncEndpoint] = useState("");
+  const [syncing, setSyncing] = useState(false);
+  const [savedSync, setSavedSync] = useState(false);
+  const [errorSync, setErrorSync] = useState<string | null>(null);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -85,6 +96,9 @@ export default function ParametresPage() {
       setAiProvider(settings.aiProvider);
       setAiApiKey(settings.aiApiKey);
       setAiModel(settings.aiModel);
+      setSyncEnabled(settings.syncEnabled);
+      setSyncEndpoint(settings.syncEndpoint);
+      useSyncStore.getState().setEnabled(settings.syncEnabled);
       // Détection disponibilité IA
       const { getAiAvailability } = await import("@/lib/ai/ai-service");
       const av = await getAiAvailability();
@@ -147,6 +161,45 @@ export default function ParametresPage() {
       setErrorAi("Erreur lors de la sauvegarde.");
     } finally {
       setSavingAi(false);
+    }
+  }
+
+  async function handleSaveSync() {
+    setErrorSync(null);
+    setSavedSync(false);
+    try {
+      await saveSettings({
+        syncEnabled,
+        syncEndpoint: syncEndpoint.trim(),
+      });
+      useSyncStore.getState().setEnabled(syncEnabled);
+      setSavedSync(true);
+      setTimeout(() => setSavedSync(false), 3000);
+      toastSuccess(
+        syncEnabled ? "Synchronisation activ\u00e9e." : "Synchronisation d\u00e9sactiv\u00e9e."
+      );
+    } catch (err) {
+      console.error("[parametres] Erreur sauvegarde sync:", err);
+      setErrorSync("Erreur lors de la sauvegarde.");
+    }
+  }
+
+  async function handleSyncNow() {
+    if (syncing) return;
+    setSyncing(true);
+    setErrorSync(null);
+    try {
+      const { syncNow } = await import("@/lib/sync/sync-service");
+      const result = await syncNow();
+      toastSuccess(
+        `Synchronisation termin\u00e9e : ${result.pushed} envoy\u00e9s, ${result.pulled} re\u00e7us.`
+      );
+    } catch (err) {
+      console.error("[parametres] Erreur sync:", err);
+      setErrorSync(err instanceof Error ? err.message : "Erreur de synchronisation.");
+      toastError("La synchronisation a \u00e9chou\u00e9.");
+    } finally {
+      setSyncing(false);
     }
   }
 
@@ -585,6 +638,128 @@ export default function ParametresPage() {
                 </div>
               </div>
             )}
+          </div>
+        </Card>
+
+        {/* Synchronisation multi-appareils (Phase 3) */}
+        <Card className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-card-elevated">
+              <Link2 className="h-5 w-5 text-lavender" aria-hidden />
+            </div>
+            <div>
+              <CardTitle className="text-lg">Synchronisation multi-appareils</CardTitle>
+              <CardDescription>
+                Synchronisez votre coffre entre plusieurs appareils. Vos donn\u00e9es restent
+                chiffr\u00e9es de bout en bout.
+              </CardDescription>
+            </div>
+          </div>
+
+          <div className="space-y-4 rounded-xl border border-subtle bg-surface p-4">
+            {/* Toggle activation */}
+            <label className="flex items-start gap-3 text-sm">
+              <input
+                type="checkbox"
+                checked={syncEnabled}
+                onChange={(e) => setSyncEnabled(e.target.checked)}
+                className="mt-0.5 rounded border-subtle accent-lavender"
+              />
+              <span>
+                <span className="block font-medium text-primary">Activer la synchronisation</span>
+                <span className="mt-1 block text-xs text-secondary">
+                  Envoie vos donn\u00e9es chiffr\u00e9es vers un serveur pour les synchroniser entre
+                  appareils. Le serveur ne peut pas les lire (chiffrement AES-256-GCM c\u00f4t\u00e9
+                  client).
+                </span>
+              </span>
+            </label>
+
+            {/* Endpoint (optionnel) */}
+            <label className="block text-sm">
+              <span className="mb-1.5 block text-secondary">
+                Serveur de synchronisation (optionnel)
+              </span>
+              <input
+                type="url"
+                value={syncEndpoint}
+                onChange={(e) => setSyncEndpoint(e.target.value)}
+                placeholder="https://sync.caryon.workers.dev"
+                className={inputClass}
+              />
+              <span className="mt-1 block text-xs text-secondary">
+                Laissez vide pour utiliser le serveur par d\u00e9faut.
+              </span>
+            </label>
+
+            {/* Statut */}
+            {syncEnabled && (
+              <div className="rounded-lg border border-subtle bg-background/40 p-3 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-secondary">Statut</span>
+                  <Badge
+                    variant={
+                      syncStatus === "syncing"
+                        ? "lavender"
+                        : syncStatus === "error"
+                          ? "danger"
+                          : syncStatus === "idle" && lastSyncAt
+                            ? "success"
+                            : "default"
+                    }
+                  >
+                    {syncStatus === "syncing"
+                      ? "Synchronisation\u2026"
+                      : syncStatus === "error"
+                        ? "Erreur"
+                        : lastSyncAt
+                          ? "\u00c0 jour"
+                          : "Jamais synchronis\u00e9"}
+                  </Badge>
+                </div>
+                {lastSyncAt && (
+                  <p className="mt-1 text-secondary">
+                    Derni\u00e8re synchronisation : {new Date(lastSyncAt).toLocaleString("fr-FR")}
+                  </p>
+                )}
+                {syncError && <p className="mt-1 text-danger">{syncError}</p>}
+                <p className="mt-1 text-secondary/60">
+                  ID de cet appareil :{" "}
+                  <code className="font-mono">{deviceId.slice(0, 8)}\u2026</code>
+                </p>
+              </div>
+            )}
+
+            {/* Avertissement confidentialit\u00e9 */}
+            <div className="flex items-start gap-2 rounded-lg border border-lavender/25 bg-lavender/5 p-3 text-xs text-secondary">
+              <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-lavender" aria-hidden />
+              <span>
+                Vos donn\u00e9es sont chiffr\u00e9es avec votre cl\u00e9 ma\u00eetresse avant
+                d\u2019\u00eatre envoy\u00e9es. Le serveur de synchronisation ne re\u00e7oit que du
+                ciphertext illisible sans votre phrase secr\u00e8te. Aucun mot de passe, aucune
+                cl\u00e9 n\u2019est jamais transmis.
+              </span>
+            </div>
+
+            {/* Boutons */}
+            <div className="flex flex-wrap items-center gap-3 border-t border-subtle pt-4">
+              <Button type="button" onClick={handleSaveSync}>
+                <Save className="h-4 w-4" aria-hidden />
+                Enregistrer
+              </Button>
+              {savedSync && <Badge variant="success">Enregistr\u00e9</Badge>}
+              {errorSync && <span className="text-xs text-danger">{errorSync}</span>}
+              {syncEnabled && (
+                <Button type="button" variant="outline" onClick={handleSyncNow} disabled={syncing}>
+                  {syncing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" aria-hidden />
+                  )}
+                  {syncing ? "Synchronisation\u2026" : "Synchroniser maintenant"}
+                </Button>
+              )}
+            </div>
           </div>
         </Card>
 

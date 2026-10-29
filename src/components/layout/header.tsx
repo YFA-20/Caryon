@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Bell, FlaskConical, Lock, Menu, Smartphone, Unlock } from "lucide-react";
+import { Bell, FlaskConical, Link2, Lock, Menu, Smartphone, Unlock } from "lucide-react";
 import { useUiStore } from "@/store/ui-store";
 import { useVaultStore } from "@/store/vault-store";
+import { useSyncStore } from "@/store/sync-store";
 import { forceLock } from "@/lib/vault/vault-service";
 import { clearDemoData, seedDemoData, hasExistingData } from "@/lib/vault/demo-data-service";
 import { getSettings, saveSettings } from "@/lib/vault/goal-repository";
@@ -30,6 +31,7 @@ const NOTIFICATION_LABELS: Record<NotificationPermissionState, string> = {
 export function Header() {
   const { demoMode, drawerOpen, firstName, setDemoMode, setDrawerOpen } = useUiStore();
   const { status } = useVaultStore();
+  const { enabled: syncEnabled, status: syncStatus, lastSyncAt } = useSyncStore();
   const unlocked = status === "unlocked";
   const [notifPermission, setNotifPermission] = useState<NotificationPermissionState>(() =>
     getNotificationPermission()
@@ -183,6 +185,27 @@ export function Header() {
         <Badge variant={unlocked ? "success" : "warning"}>
           {unlocked ? "Coffre déverrouillé" : "Coffre verrouillé"}
         </Badge>
+        {syncEnabled && (
+          <Badge
+            variant={
+              syncStatus === "syncing"
+                ? "lavender"
+                : syncStatus === "error"
+                  ? "danger"
+                  : lastSyncAt
+                    ? "success"
+                    : "default"
+            }
+            title={
+              lastSyncAt
+                ? `Dernière sync : ${new Date(lastSyncAt).toLocaleString("fr-FR")}`
+                : "Synchronisation activée, jamais synchronisé"
+            }
+          >
+            <Link2 className="mr-1 h-3 w-3" aria-hidden />
+            {syncStatus === "syncing" ? "Sync…" : syncStatus === "error" ? "Sync erreur" : "Sync"}
+          </Badge>
+        )}
       </div>
 
       {/* Icône PWA — visible quand l'app est installée (tous écrans) */}
