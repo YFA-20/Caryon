@@ -65,6 +65,9 @@ export default function ParametresPage() {
   const [aiApiKey, setAiApiKey] = useState("");
   const [aiModel, setAiModel] = useState("");
   const [aiAvailable, setAiAvailable] = useState<{ local: boolean; cloud: boolean } | null>(null);
+  const [savingAi, setSavingAi] = useState(false);
+  const [savedAi, setSavedAi] = useState(false);
+  const [errorAi, setErrorAi] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -121,6 +124,29 @@ export default function ParametresPage() {
       setError("Erreur lors de la sauvegarde.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleSaveAi() {
+    setSavingAi(true);
+    setErrorAi(null);
+    setSavedAi(false);
+    try {
+      await saveSettings({
+        firstName: formFirstName.trim(),
+        autoLockMs: formAutoLock,
+        aiConsent,
+        aiProvider,
+        aiApiKey: aiApiKey.trim(),
+        aiModel: aiModel.trim(),
+      });
+      setSavedAi(true);
+      setTimeout(() => setSavedAi(false), 3000);
+    } catch (err) {
+      console.error("[parametres] Erreur sauvegarde IA:", err);
+      setErrorAi("Erreur lors de la sauvegarde.");
+    } finally {
+      setSavingAi(false);
     }
   }
 
@@ -542,6 +568,20 @@ export default function ParametresPage() {
                     envoyés. En mode cloud, les données sont anonymisées (emails, téléphones
                     retirés).
                   </span>
+                </div>
+
+                {/* Bouton enregistrer IA */}
+                <div className="flex items-center gap-3 border-t border-subtle pt-4">
+                  <Button type="button" onClick={handleSaveAi} disabled={savingAi}>
+                    {savingAi ? (
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                    ) : (
+                      <Save className="h-4 w-4" aria-hidden />
+                    )}
+                    {savingAi ? "Enregistrement…" : "Enregistrer l&apos;IA"}
+                  </Button>
+                  {savedAi && <Badge variant="success">Enregistré</Badge>}
+                  {errorAi && <span className="text-xs text-danger">{errorAi}</span>}
                 </div>
               </div>
             )}
