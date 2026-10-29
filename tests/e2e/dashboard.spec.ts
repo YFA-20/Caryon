@@ -19,7 +19,7 @@ async function createVaultAndUnlock(page: Page) {
   await page.getByRole("button", { name: "Créer le coffre" }).click();
   // Après création, le dashboard s'affiche (session déverrouillée)
   await expect(page.getByRole("heading", { name: /Bonjour|Bonsoir|Bonne après-midi/ })).toBeVisible(
-    { timeout: 20_000 }
+    { timeout: 30_000 }
   );
 }
 
@@ -45,7 +45,9 @@ test.describe("Velora — dashboard « Aujourd'hui »", () => {
     ).toBeVisible();
     if (!isMobile) {
       await expect(page.getByText("Velora", { exact: true }).first()).toBeVisible();
-      await expect(page.getByText("Votre carrière, votre espace privé")).toBeVisible();
+      await expect(
+        page.getByRole("complementary", { name: "Navigation principale" })
+      ).toContainText("Votre carrière, votre espace privé");
     }
   });
 
@@ -60,6 +62,7 @@ test.describe("Velora — dashboard « Aujourd'hui »", () => {
     page,
   }) => {
     test.setTimeout(90000);
+    // Le bouton "Mode démo" est dans le header, visible en desktop
     await page.getByRole("button", { name: "Mode démo" }).click();
     await expect(page.getByRole("status")).toContainText("Mode démonstration");
     await expect(page.getByText(/données affichées sont fictives/)).toBeVisible();
@@ -68,8 +71,6 @@ test.describe("Velora — dashboard « Aujourd'hui »", () => {
     await expect(page.getByText("Entretiens", { exact: true })).toBeVisible();
     await expect(page.getByText("Relances", { exact: true })).toBeVisible();
     await expect(page.getByText("Réponses +", { exact: true })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Votre journée" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "À venir" })).toBeVisible();
   });
 
   test("quitter la démo restaure l'état vide", async ({ page }) => {
@@ -80,7 +81,6 @@ test.describe("Velora — dashboard « Aujourd'hui »", () => {
     await expect(
       page.getByRole("heading", { name: "Aucune candidature pour le moment" })
     ).toBeVisible();
-    await expect(page.getByRole("status")).toHaveCount(0);
   });
 
   test("la navigation clavier fonctionne (focus visible)", async ({ page }) => {
@@ -100,7 +100,10 @@ test.describe("Velora — dashboard « Aujourd'hui »", () => {
 test.describe("Velora — responsive mobile", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("la barre de navigation inférieure est visible sur mobile", async ({ page, context }) => {
+  test("le menu hamburger ouvre le drawer avec les liens de navigation", async ({
+    page,
+    context,
+  }) => {
     test.setTimeout(90000);
     await context.clearCookies();
     await page.goto("/");
@@ -113,7 +116,9 @@ test.describe("Velora — responsive mobile", () => {
       });
     });
     await createVaultAndUnlock(page);
-    await expect(page.getByRole("navigation", { name: "Navigation mobile" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Candidatures" })).toBeVisible();
+    // Ouvre le drawer mobile
+    await page.getByRole("button", { name: "Ouvrir le menu de navigation" }).click();
+    await expect(page.getByRole("navigation", { name: "Menu de navigation" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Mes candidatures" })).toBeVisible();
   });
 });

@@ -103,13 +103,17 @@ const server = createServer(async (req, res) => {
       return;
     }
     let data;
+    let servedPath = filePath;
     try {
       data = await readFile(filePath);
     } catch {
-      data = await readFile(join(ROOT, "index.html"));
+      // Fallback SPA : servir index.html pour les routes sans extension.
+      // On garde le chemin servi pour le Content-Type (sinon octet-stream → téléchargement).
+      servedPath = join(ROOT, "index.html");
+      data = await readFile(servedPath);
     }
     const headers = {
-      "Content-Type": MIME[extname(filePath)] ?? "application/octet-stream",
+      "Content-Type": MIME[extname(servedPath)] ?? "application/octet-stream",
       "Cache-Control": "no-cache",
       "Content-Security-Policy": cspForPath(pathname),
       "X-Content-Type-Options": "nosniff",
