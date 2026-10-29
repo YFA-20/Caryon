@@ -106,8 +106,11 @@ jobs:
       - name: Build (export statique)
         run: npm run build
 
-      - name: Audit production (fail sur vulnérabilités >= high)
-        run: npm audit --audit-level=high --omit=dev
+      - name: Vérification CVE zod (faux positif npm audit sur zod v3)
+        run: node scripts/check-zod-cve.mjs
+
+      - name: Audit production (fail sur vulnérabilités >= high, hors faux positif zod)
+        run: npm run security:audit:prod
 
       - name: Upload build artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
