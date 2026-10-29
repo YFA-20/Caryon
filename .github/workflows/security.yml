@@ -44,9 +44,11 @@ jobs:
     # CodeQL nécessite GitHub Advanced Security (indisponible sur un compte
     # gratuit avec dépôt privé). L'action racine étant un stub, on utilise les
     # sous-actions init/analyze directement. Le job est en continue-on-error :
-    # si Advanced Security n'est pas activé, il échoue gracieusement (warning)
-    # sans bloquer la CI. Il produira des résultats dès que Advanced Security
-    # sera disponible (compte payant, GitHub pour l'éducation, ou dépôt public).
+    # il échoue gracieusement (warning) sans bloquer la CI. Il produira des
+    # résultats dès que Advanced Security sera disponible.
+    # Note : le build CodeQL échoue aussi à cause de next/font (téléchargement
+    # des polices Google bloqué en CI sandbox) — on passe par un build
+    # factice (tsc) pour l'extraction du code source sans exécuter webpack.
     continue-on-error: true
     steps:
       - name: Checkout
@@ -66,8 +68,8 @@ jobs:
         with:
           languages: javascript-typescript
 
-      - name: Build (pour l'analyse des flux)
-        run: npm run build
+      - name: Extraction du code source (sans webpack/next/font)
+        run: npm run typecheck
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@4bfa242aa49c5f7c6770b98670d354a7dfac05f8 # v3
