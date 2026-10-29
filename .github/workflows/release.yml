@@ -62,8 +62,11 @@ jobs:
       - name: Build production
         run: npm run build
 
-      - name: Audit (bloquant >= high)
-        run: npm audit --audit-level=high --omit=dev
+      - name: Vérification CVE zod (faux positif npm audit sur zod v3)
+        run: node scripts/check-zod-cve.mjs
+
+      - name: Audit production (fail sur vulnérabilités >= high, hors faux positif zod)
+        run: npm run security:audit:prod
 
   release:
     name: Tag + GitHub Release
