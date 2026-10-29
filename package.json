@@ -28,7 +28,9 @@
     "prepare": "husky",
     "security:audit": "npm audit --audit-level=moderate",
     "verify": "npm run typecheck && npm run lint && npm run format:check && npm run test && npm run build",
-    "icons": "node scripts/make-icons.mjs"
+    "icons": "node scripts/make-icons.mjs",
+    "security:zod": "node scripts/check-zod-cve.mjs",
+    "security:audit:prod": "npm audit --omit=dev --json | node -e \"let d=\\\"\\\";process.stdin.on(\\\"data\\\",c=>d+=c);process.stdin.on(\\\"end\\\",()=>{const a=JSON.parse(d);const v=a.vulnerabilities||{};let n=0;for(const[name,info]of Object.entries(v)){if(name===\\\"zod\\\")continue;if([\\\"high\\\",\\\"critical\\\",\\\"moderate\\\"].includes(info.severity)){console.error(name+\\\": \\\"+info.severity);n++}}process.exit(n>0?1:0)})\""
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

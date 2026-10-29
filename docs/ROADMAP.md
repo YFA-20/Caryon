@@ -37,7 +37,7 @@ Les jalons sont aussi suivis via les [Milestones GitHub](https://github.com/YFA-
 - [x] Palette de commandes (Cmd+K)
 - [x] Annulation (undo) des suppressions
 - [x] Skeletons + raccourcis clavier + onboarding
-- [x] Tests unitaires (355 tests, 34 fichiers)
+- [x] Tests unitaires (421 tests, 40 fichiers)
 
 **Critères de sortie atteints** : persistance hors ligne, illisibilite du ciphertext,
 detection de modification (GCM), restauration, aucun appel reseau pour les operations de base.
@@ -52,7 +52,7 @@ detection de modification (GCM), restauration, aucun appel reseau pour les opera
 - [x] Page de controle IA (`/ia`) + parametres IA (`/parametres#ia`)
 - [x] Anonymisation des donnees avant envoi cloud
 - [x] Cle API chiffree dans le vault (jamais en clair)
-- [ ] Mode local WebLLM (stub — a implementer si besoin 100% offline)
+- [x] Mode local WebLLM (intégré — @mlc-ai/web-llm, WebGPU, modèles Hugging Face)
 
 ## 🔲 Phase 3 — Multi-appareils (v0.4.0) — A VENIR
 
@@ -77,17 +77,16 @@ detection de modification (GCM), restauration, aucun appel reseau pour les opera
 
 ## 🐛 Bugs connus (différés)
 
-| Bug                             | Description                                                                                                                                                      | Priorite            |
-| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
-| Auto-lock au refresh navigateur | Le bouton ↻ du navigateur declenche un verrouillage immediat (meme mecanisme que F5). Fix prevu : persister `lastActivityAt` dans `sessionStorage` ou IndexedDB. | Moyenne             |
-| npm audit zod                   | 1 advisory high (CVE-2023-54404) — affecte zod v4 uniquement. Tous les schemas Velora utilisent `.max()` sur les tableaux.                                       | Faible (cosmetique) |
-| E2E local                       | Playwright Chromium ne tourne pas dans le sandbox (lib manquante). E2E en CI uniquement.                                                                         | Info                |
+| Bug           | Description                                                                                                                                                                                                    | Priorite            |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
+| npm audit zod | Faux positif confirmé : la CVE GHSA-mrhx-c7xc-m3w5 affecte zod v4 (< 4.6.6). Velora utilise zod v3.25.76. Vérifié par `scripts/check-zod-cve.mjs` en CI. Tous les schemas utilisent `.max()` sur les tableaux. | Faible (cosmetique) |
+| npm audit dev | 9 vulnérabilités en dev uniquement (vitest, vite, esbuild, serve/compression, tinypool). Aucune en production. Suivies via Dependabot.                                                                         | Faible              |
+| E2E local     | Playwright Chromium ne tourne pas dans le sandbox (lib manquante). E2E en CI uniquement.                                                                                                                       | Info                |
 
 ---
 
 ## Prochaines priorites recommandees
 
 1. **Phase 3 — Multi-appareils** (le gros morceau restant)
-2. **Dependabot + protection branche main** (hygiene repo)
-3. **Tag v0.2.0 + release GitHub** (premiere version partageable)
-4. **WebLLM local** (si besoin IA 100% offline)
+2. **Protection branche main** (hygiene repo — à faire manuellement sur GitHub)
+3. **Phase 4 — Production v1.0.0** (accessibilité WCAG, doc utilisateur, audit externe)
