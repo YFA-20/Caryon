@@ -21,6 +21,8 @@
  *   POST /pairing/confirm                        — confirmer/refuser
  *   GET  /devices?vaultId=&deviceId=             — liste des appareils
  *   POST /devices/revoke                         — révoquer un appareil
+ *   PUT  /vault                                  — pousser les métadonnées du coffre
+ *   GET  /vault?vaultId=                         — récupérer les métadonnées (restauration)
  *   GET  /health                                 — healthcheck
  */
 
@@ -625,6 +627,184 @@ async function handleRevokeDevice(req: Request, env: Env): Promise<Response> {
   return jsonResponse({ ok: true }, 200, origin, env);
 }
 
+// ---------------------------------------------------------------------------
+// Métadonnées du coffre (restauration multi-appareils)
+// ---------------------------------------------------------------------------
+
+interface VaultMetaBody {
+  vaultId: string;
+  version: number;
+  createdAt: string;
+  kdf: string;
+  salt: string;
+  wrappedMasterKey: string;
+  wrapIv: string;
+  verifier: string;
+  verifierIv: string;
+  autoLockMs: number;
+  deviceId: string;
+}
+
+function validateVaultMetaBody(body: unknown): body is VaultMetaBody {
+  if (typeof body !== "object" || body === null) return false;
+  const b = body as Record<string, unknown>;
+  return (
+    isUuid(b.vaultId) &&
+    b.version === 1 &&
+    isIsoDate(b.createdAt) &&
+    typeof b.kdf === "string" && b.kdf.length >= 10 && b.kdf.length <= 2000 &&
+    typeof b.salt === "string" && b.salt.length >= 10 && b.salt.length <= 200 &&
+    typeof b.wrappedMasterKey === "string" &&
+    b.wrappedMasterKey.length >= 10 &&
+    b.wrappedMasterKey.length <= 2000 &&
+    typeof b.wrapIv === "string" && b.wrapIv.length >= 10 && b.wrapIv.length <= 100 &&
+    typeof b.verifier === "string" && b.verifier.length >= 10 && b.verifier.length <= 2000 &&
+    typeof b.verifierIv === "string" && b.verifierIv.length >= 10 && b.verifierIv.length <= 100 &&
+    typeof b.autoLockMs === "number" && b.autoLockMs >= 0 && b.autoLockMs <= 86400000 &&
+    isUuid(b.deviceId)
+  );
+}
+
+/**
+ * PUT /vault — pousse les métadonnées du coffre (restauration multi-appareils).
+ *
+ * SÉCURITÉ : les métadonnées contiennent la clé maître WRAPPÉE (chiffrée par la KEK
+ * dérivée de la phrase secrète). Sans la phrase, elles sont inutilisables.
+ * Le serveur ne peut pas déchiffrer les données même s'il est compromis.
+ *
+ * N'accepte que si l'appareil est déjà appairé pour ce coffre.
+ */
+async function handlePutVault(req: Request, env: Env): Promise<Response> {
+  const origin = req.headers.get("Origin");
+  const body = (await req.json().catch(() => null)) as unknown;
+  if (!validateVaultMetaBody(body)) {
+    return errorResponse("Corps invalide (métadonnées du coffre)", 400, origin, env);
+  }
+
+  // Vérifie que l'appareil est appairé pour ce coffre.
+  const paired = await isDevicePaired(env.DB, body.vaultId, body.deviceId);
+  if (!paired) {
+    return errorResponse("Appareil non appairé pour ce coffre", 403, origin, env);
+  }
+
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    `INSERT INTO vault_meta
+       (vault_id, version, created_at, kdf, salt, wrapped_master_key, wrap_iv,
+        verifier, verifier_iv, auto_lock_ms, updated_at, updated_by_device_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(vault_id) DO UPDATE SET
+       version = excluded.version,
+       kdf = excluded.kdf,
+       salt = excluded.salt,
+       wrapped_master_key = excluded.wrapped_master_key,
+       wrap_iv = excluded.wrap_iv,
+       verifier = excluded.verifier,
+       verifier_iv = excluded.verifier_iv,
+       auto_lock_ms = excluded.auto_lock_ms,
+       updated_at = excluded.updated_at,
+       updated_by_device_id = excluded.updated_by_device_id`
+  )
+    .bind(
+      body.vaultId,
+      body.version,
+      body.createdAt,
+      body.kdf,
+      body.salt,
+      body.wrappedMasterKey,
+      body.wrapIv,
+      body.verifier,
+      body.verifierIv,
+      body.autoLockMs,
+      now,
+      body.deviceId
+    )
+    .run();
+
+  return jsonResponse({ ok: true, serverNow: now }, 200, origin, env);
+}
+
+/**
+ * GET /vault?vaultId=&deviceId= — récupère les métadonnées du coffre.
+ *
+ * Permet à un nouvel appareil de restaurer son coffre depuis le cloud :
+ * il récupère les métadonnées, saisit sa phrase secrète, et le serveur
+ * lui retourne les métadonnées (la clé wrappée est inutile sans la phrase).
+ *
+ * SÉCURITÉ : n'importe qui connaissant le vaultId peut récupérer ces métadonnées.
+ * C'est volontaire : sans la phrase secrète, elles sont inutilisables (la clé
+ * maître est wrappée par la KEK). C'est le même niveau de sécurité qu'un
+ * fichier de sauvegarde .velora.
+ *
+ * Si deviceId est fourni et appairé, on vérifie l'appartenance.
+ * Si deviceId n'est pas fourni (premier démarrage sur un nouvel appareil),
+ * on retourne quand même les métadonnées (la phrase secrète est le vrai verrou).
+ */
+async function handleGetVault(req: Request, env: Env): Promise<Response> {
+  const origin = req.headers.get("Origin");
+  const url = new URL(req.url);
+  const vaultId = url.searchParams.get("vaultId");
+  const deviceId = url.searchParams.get("deviceId");
+
+  if (!isUuid(vaultId)) {
+    return errorResponse("vaultId invalide", 400, origin, env);
+  }
+
+  // Si un deviceId est fourni, vérifie qu'il est appairé.
+  if (deviceId !== null) {
+    if (!isUuid(deviceId)) {
+      return errorResponse("deviceId invalide", 400, origin, env);
+    }
+    const paired = await isDevicePaired(env.DB, vaultId, deviceId);
+    if (!paired) {
+      return errorResponse("Appareil non appairé pour ce coffre", 403, origin, env);
+    }
+  }
+
+  const row = await env.DB.prepare(
+    `SELECT vault_id, version, created_at, kdf, salt, wrapped_master_key, wrap_iv,
+            verifier, verifier_iv, auto_lock_ms, updated_at
+     FROM vault_meta WHERE vault_id = ?`
+  )
+    .bind(vaultId)
+    .first<{
+      vault_id: string;
+      version: number;
+      created_at: string;
+      kdf: string;
+      salt: string;
+      wrapped_master_key: string;
+      wrap_iv: string;
+      verifier: string;
+      verifier_iv: string;
+      auto_lock_ms: number;
+      updated_at: string;
+    }>();
+
+  if (!row) {
+    return errorResponse("Coffre introuvable sur le serveur", 404, origin, env);
+  }
+
+  return jsonResponse(
+    {
+      vaultId: row.vault_id,
+      version: row.version,
+      createdAt: row.created_at,
+      kdf: row.kdf,
+      salt: row.salt,
+      wrappedMasterKey: row.wrapped_master_key,
+      wrapIv: row.wrap_iv,
+      verifier: row.verifier,
+      verifierIv: row.verifier_iv,
+      autoLockMs: row.auto_lock_ms,
+      updatedAt: row.updated_at,
+    },
+    200,
+    origin,
+    env
+  );
+}
+
 /** GET /health — healthcheck. */
 async function handleHealth(env: Env): Promise<Response> {
   return jsonResponse(
@@ -684,6 +864,14 @@ const worker = {
       }
       if (path === "/pairing/confirm" && req.method === "POST") {
         return handlePairingConfirm(req, env);
+      }
+
+      // Vault meta (restauration multi-appareils).
+      if (path === "/vault" && req.method === "PUT") {
+        return handlePutVault(req, env);
+      }
+      if (path === "/vault" && req.method === "GET") {
+        return handleGetVault(req, env);
       }
 
       // Devices.

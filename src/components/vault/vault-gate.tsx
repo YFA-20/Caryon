@@ -19,6 +19,7 @@ import {
   verifyBackupIntegrity,
 } from "@/lib/vault/backup-service";
 import { getSettings } from "@/lib/vault/goal-repository";
+import { RestoreFromCloud } from "@/components/vault/restore-from-cloud";
 
 /**
  * Velora — portail du coffre-fort.
@@ -302,6 +303,17 @@ export function VaultGate({ children }: { children: React.ReactNode }) {
               phrase secrète. Sans cette phrase, vos données sont irrécupérables. Aucune
               récupération côté serveur.
             </p>
+            <div className="mt-4">
+              <RestoreFromCloud
+                onRestored={() => {
+                  // Le coffre est restauré et déverrouillé : on repasse en mode locked
+                  // pour que l'utilisateur confirme avec sa phrase (double vérification).
+                  setStatus("locked");
+                  setPassphrase("");
+                  setConfirm("");
+                }}
+              />
+            </div>
           </>
         )}
       </Card>

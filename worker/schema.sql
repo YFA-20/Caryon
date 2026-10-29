@@ -63,3 +63,34 @@ CREATE TABLE IF NOT EXISTS pairing_requests (
 -- Index pour le nettoyage des demandes expirées.
 CREATE INDEX IF NOT EXISTS idx_pairing_expires
   ON pairing_requests(expires_at);
+
+-- M\u00e9tadonn\u00e9es du coffre pour la restauration multi-appareils.
+-- Contient les param\u00e8tres KDF + salt + cl\u00e9 ma\u00eetre wrapp\u00e9e + verifier.
+-- S\u00c9CURIT\u00c9 : la cl\u00e9 ma\u00eetre wrapp\u00e9e est INUTILISABLE sans la phrase secr\u00e8te
+-- (elle est chiffr\u00e9e par la KEK d\u00e9riv\u00e9e de la phrase via Argon2id).
+-- Le serveur ne peut donc pas d\u00e9chiffrer les donn\u00e9es m\u00eame s'il est compromis.
+CREATE TABLE IF NOT EXISTS vault_meta (
+  vault_id TEXT PRIMARY KEY,
+  -- Version du format (1).
+  version INTEGER NOT NULL DEFAULT 1,
+  -- Date de cr\u00e9ation du coffre (ISO 8601).
+  created_at TEXT NOT NULL,
+  -- Param\u00e8tres KDF s\u00e9rialis\u00e9s en JSON (argon2id, memoryKiB, iterations, parallelism, hashLength).
+  kdf TEXT NOT NULL,
+  -- Sel (base64url, 16 octets).
+  salt TEXT NOT NULL,
+  -- Cl\u00e9 ma\u00eetre wrapp\u00e9e par la KEK (base64url) \u2014 INUTILISABLE sans la phrase.
+  wrapped_master_key TEXT NOT NULL,
+  -- IV du wrapping (base64url).
+  wrap_iv TEXT NOT NULL,
+  -- Verifier (base64url) \u2014 permet de v\u00e9rifier la phrase sans d\u00e9chiffrer les donn\u00e9es.
+  verifier TEXT NOT NULL,
+  -- IV du verifier (base64url).
+  verifier_iv TEXT NOT NULL,
+  -- D\u00e9lai d'auto-lock en ms.
+  auto_lock_ms INTEGER NOT NULL DEFAULT 900000,
+  -- Date de derni\u00e8re mise \u00e0 jour des m\u00e9tadonn\u00e9es (ISO 8601).
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  -- Appareil qui a pouss\u00e9 ces m\u00e9tadonn\u00e9es en dernier.
+  updated_by_device_id TEXT NOT NULL
+);

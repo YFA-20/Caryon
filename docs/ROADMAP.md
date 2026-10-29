@@ -54,9 +54,9 @@ detection de modification (GCM), restauration, aucun appel reseau pour les opera
 - [x] Cle API chiffree dans le vault (jamais en clair)
 - [x] Mode local WebLLM (intégré — @mlc-ai/web-llm, WebGPU, modèles Hugging Face)
 
-## 🔄 Phase 3 — Multi-appareils (v0.4.0) — EN COURS
+## ✅ Phase 3 — Multi-appareils (v0.4.0) — TERMINÉE
 
-- [x] Fondations sync : schémas Zod (enveloppes, pairing, devices) — `src/lib/sync/schema.ts`
+- [x] Fondations sync : schémas Zod (enveloppes, pairing, devices, vault meta) — `src/lib/sync/schema.ts`
 - [x] Store Zustand sync (état UI uniquement, jamais de clé) — `src/store/sync-store.ts`
 - [x] Service sync client (push/pull/pairing/revoke) — `src/lib/sync/sync-service.ts`
 - [x] Chiffrement client avant envoi (AES-256-GCM, le serveur ne voit que du ciphertext)
@@ -71,7 +71,12 @@ detection de modification (GCM), restauration, aucun appel reseau pour les opera
 - [x] Sync automatique : hook `useAutoSync` (périodique 5 min + focus + visibilité)
 - [x] Navigation : item « Appairage » + recherche globale (Ctrl+K)
 - [x] Appairage : approbation/refus des demandes côté appareil A (endpoint `/pairing/pending` + UI)
-- [ ] Restauration multi-appareils (nouvel appareil depuis un backup cloud)
+- [x] Restauration multi-appareils : `PUT/GET /vault` + UI « Restaurer depuis le cloud » + affichage du vaultId sur la page Appairage + push auto des métadonnées
+
+**Critères de sortie atteints** : chiffrement de bout en bout (le serveur ne voit
+que du ciphertext), appairage sécurisé (code 6 chiffres + preuve HMAC), sync
+automatique, révocation d'appareils, restauration cloud sans perte de
+confidentialité (la phrase secrète reste le seul verrou).
 
 ## 🔲 Phase 4 — Production & Release (v1.0.0)
 

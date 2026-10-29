@@ -19,6 +19,9 @@ import {
   pairingConfirmRequestSchema,
   pendingPairingSchema,
   pendingPairingsResponseSchema,
+  vaultMetaSchema,
+  putVaultRequestSchema,
+  putVaultResponseSchema,
   pairedDeviceSchema,
   deviceListResponseSchema,
   syncMetaSchema,
@@ -372,6 +375,104 @@ describe("pendingPairingsResponseSchema", () => {
     }));
     const result = pendingPairingsResponseSchema.safeParse({ pending });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("vaultMetaSchema", () => {
+  const validMeta = {
+    vaultId: VALID_UUID,
+    version: 1 as const,
+    createdAt: "2025-01-15T10:00:00.000Z",
+    kdf: JSON.stringify({
+      algorithm: "argon2id",
+      memoryKiB: 65536,
+      iterations: 3,
+      parallelism: 1,
+      hashLength: 32,
+    }),
+    salt: "AAAAAAAAAAAAAAAAAAAAAA",
+    wrappedMasterKey: "wrapped-key-base64url-content",
+    wrapIv: "wrap-iv-base64url",
+    verifier: "verifier-base64url-content",
+    verifierIv: "verifier-iv-base64url",
+    autoLockMs: 900000,
+    updatedAt: "2025-01-15T10:30:00.000Z",
+  };
+
+  it("accepte des métadonnées valides", () => {
+    const result = vaultMetaSchema.safeParse(validMeta);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejette une version incorrecte", () => {
+    const result = vaultMetaSchema.safeParse({ ...validMeta, version: 2 });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejette un vaultId non-UUID", () => {
+    const result = vaultMetaSchema.safeParse({ ...validMeta, vaultId: "xxx" });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejette un salt trop court", () => {
+    const result = vaultMetaSchema.safeParse({ ...validMeta, salt: "court" });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejette un wrappedMasterKey vide", () => {
+    const result = vaultMetaSchema.safeParse({ ...validMeta, wrappedMasterKey: "" });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejette un autoLockMs négatif", () => {
+    const result = vaultMetaSchema.safeParse({ ...validMeta, autoLockMs: -1 });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("putVaultRequestSchema", () => {
+  it("accepte une requête valide", () => {
+    const result = putVaultRequestSchema.safeParse({
+      vaultId: VALID_UUID,
+      version: 1,
+      createdAt: "2025-01-15T10:00:00.000Z",
+      kdf: JSON.stringify({ algorithm: "argon2id" }),
+      salt: "AAAAAAAAAAAAAAAAAAAAAA",
+      wrappedMasterKey: "wrapped-key-base64url-content",
+      wrapIv: "wrap-iv-base64url",
+      verifier: "verifier-base64url-content",
+      verifierIv: "verifier-iv-base64url",
+      autoLockMs: 900000,
+      deviceId: VALID_UUID_2,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejette un deviceId non-UUID", () => {
+    const result = putVaultRequestSchema.safeParse({
+      vaultId: VALID_UUID,
+      version: 1,
+      createdAt: "2025-01-15T10:00:00.000Z",
+      kdf: JSON.stringify({ algorithm: "argon2id" }),
+      salt: "AAAAAAAAAAAAAAAAAAAAAA",
+      wrappedMasterKey: "wrapped-key-base64url-content",
+      wrapIv: "wrap-iv-base64url",
+      verifier: "verifier-base64url-content",
+      verifierIv: "verifier-iv-base64url",
+      autoLockMs: 900000,
+      deviceId: "pas-un-uuid",
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("putVaultResponseSchema", () => {
+  it("accepte une réponse valide", () => {
+    const result = putVaultResponseSchema.safeParse({
+      ok: true,
+      serverNow: "2025-01-15T10:35:00.000Z",
+    });
+    expect(result.success).toBe(true);
   });
 });
 

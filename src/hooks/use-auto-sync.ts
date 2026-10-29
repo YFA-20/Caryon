@@ -43,6 +43,10 @@ export function useAutoSync() {
     try {
       const ready = await isSyncReady();
       if (!ready) return;
+      // Pousse les métadonnées du coffre (pour la restauration multi-appareils).
+      // Erreur silencieuse : c'est un bonus, pas un requis.
+      const { pushVaultMetaToCloud } = await import("@/lib/sync/vault-meta-service");
+      await pushVaultMetaToCloud();
       await syncNow();
       lastSyncRef.current = Date.now();
     } catch (err) {

@@ -218,3 +218,62 @@ export const pushResponseSchema = z.object({
 });
 
 export type PushResponse = z.infer<typeof pushResponseSchema>;
+
+// ---------------------------------------------------------------------------
+// Métadonnées du coffre (restauration multi-appareils)
+// ---------------------------------------------------------------------------
+
+/**
+ * Métadonnées du coffre telles que stockées côté serveur (D1).
+ *
+ * SÉCURITÉ : `wrappedMasterKey` est la clé maîtresse CHIFFRÉE par la KEK
+ * (dérivée de la phrase secrète via Argon2id). Sans la phrase, elle est
+ * inutilisable. Le serveur ne peut pas déchiffrer les données même s'il
+ * est compromis — c'est le même niveau de sécurité qu'un fichier .velora.
+ */
+export const vaultMetaSchema = z.object({
+  vaultId: z.string().uuid(),
+  version: z.literal(1),
+  createdAt: z.string().datetime(),
+  /** Paramètres KDF sérialisés en JSON (argon2id, memoryKiB, iterations, parallelism, hashLength). */
+  kdf: z.string().min(10).max(2000),
+  /** Sel (base64url). */
+  salt: z.string().min(10).max(200),
+  /** Clé maîtresse wrappée par la KEK (base64url) — INUTILISABLE sans la phrase. */
+  wrappedMasterKey: z.string().min(10).max(2000),
+  /** IV du wrapping (base64url). */
+  wrapIv: z.string().min(10).max(100),
+  /** Verifier AEAD (base64url) — permet de vérifier la phrase sans déchiffrer. */
+  verifier: z.string().min(10).max(2000),
+  /** IV du verifier (base64url). */
+  verifierIv: z.string().min(10).max(100),
+  /** Délai d'auto-lock en ms. */
+  autoLockMs: z.number().int().nonnegative().max(86400000),
+  updatedAt: z.string().datetime(),
+});
+
+export type VaultMeta = z.infer<typeof vaultMetaSchema>;
+
+/** Requête PUT /vault — pousser les métadonnées du coffre. */
+export const putVaultRequestSchema = z.object({
+  vaultId: z.string().uuid(),
+  version: z.literal(1),
+  createdAt: z.string().datetime(),
+  kdf: z.string().min(10).max(2000),
+  salt: z.string().min(10).max(200),
+  wrappedMasterKey: z.string().min(10).max(2000),
+  wrapIv: z.string().min(10).max(100),
+  verifier: z.string().min(10).max(2000),
+  verifierIv: z.string().min(10).max(100),
+  autoLockMs: z.number().int().nonnegative().max(86400000),
+  deviceId: deviceIdSchema,
+});
+
+export type PutVaultRequest = z.infer<typeof putVaultRequestSchema>;
+
+export const putVaultResponseSchema = z.object({
+  ok: z.boolean(),
+  serverNow: z.string().datetime(),
+});
+
+export type PutVaultResponse = z.infer<typeof putVaultResponseSchema>;

@@ -77,6 +77,9 @@ export default function AppairagePage() {
   const [loadingDevices, setLoadingDevices] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
 
+  // VaultId (pour la restauration multi-appareils)
+  const [vaultId, setVaultId] = useState<string | null>(null);
+
   // Demandes d'appairage en attente (appareil A)
   const [pendingPairings, setPendingPairings] = useState<PendingPairing[]>([]);
   const [loadingPending, setLoadingPending] = useState(false);
@@ -122,6 +125,12 @@ export default function AppairagePage() {
   useEffect(() => {
     if (syncReady) loadDevices();
   }, [syncReady, loadDevices]);
+
+  // Charge le vaultId pour l'afficher (restauration multi-appareils)
+  useEffect(() => {
+    const session = getSession();
+    if (session) setVaultId(session.vault.id);
+  }, [syncReady]);
 
   // Charge les demandes d'appairage en attente
   const loadPendingPairings = useCallback(async () => {
@@ -701,19 +710,49 @@ export default function AppairagePage() {
                 <CardDescription>Gérez les appareils connectés à votre coffre.</CardDescription>
               </div>
             </div>
-            <Button variant="ghost" size="icon" onClick={loadDevices} disabled={loadingDevices}>
-              {loadingDevices ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-              ) : (
-                <RefreshCw className="h-4 w-4" aria-hidden />
+            <div className="flex items-center gap-1">
+              {vaultId && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(vaultId).then(
+                      () => toastSuccess("Identifiant du coffre copié."),
+                      () => toastError("Impossible de copier.")
+                    );
+                  }}
+                  title="Copier l'identifiant du coffre (pour restaurer sur un nouvel appareil)"
+                >
+                  <Copy className="h-3.5 w-3.5" aria-hidden />
+                  ID coffre
+                </Button>
               )}
-            </Button>
+              <Button variant="ghost" size="icon" onClick={loadDevices} disabled={loadingDevices}>
+                {loadingDevices ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                ) : (
+                  <RefreshCw className="h-4 w-4" aria-hidden />
+                )}
+              </Button>
+            </div>
           </div>
 
           {devices.length === 0 ? (
-            <p className="text-sm text-secondary">
-              {loadingDevices ? "Chargement…" : "Aucun appareil appairé pour le moment."}
-            </p>
+            <div className="space-y-2">
+              <p className="text-sm text-secondary">
+                {loadingDevices ? "Chargement…" : "Aucun appareil appairé pour le moment."}
+              </p>
+              {vaultId && (
+                <div className="rounded-lg border border-subtle bg-background/40 p-3 text-xs">
+                  <p className="text-secondary">
+                    Identifiant de votre coffre (pour restaurer sur un nouvel appareil) :
+                  </p>
+                  <code className="mt-1 block select-all break-all font-mono text-primary">
+                    {vaultId}
+                  </code>
+                </div>
+              )}
+            </div>
           ) : (
             <div className="space-y-2">
               {devices.map((device) => (
