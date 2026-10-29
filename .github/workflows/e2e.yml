@@ -10,7 +10,10 @@ permissions:
 
 concurrency:
   group: e2e-${{ github.ref }}
-  cancel-in-progress: true
+  # Ne pas annuler un run E2E en cours quand on push un nouveau commit :
+  # les tests Playwright prennent ~10 min et un push intermédiaire (ex:
+  # fix CI) ne doit pas les interrompre. Le dernier run de la PR gagne.
+  cancel-in-progress: false
 
 jobs:
   playwright:
