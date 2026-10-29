@@ -28,13 +28,20 @@ test.describe("Velora — coffre-fort et candidatures", () => {
       });
     });
     await page.reload();
+    // Attendre que le VaultGate ait fini sa résolution async (IndexedDB)
+    await expect(
+      page.getByRole("heading", { name: /Créer votre coffre-fort|Déverrouiller le coffre/ }).first()
+    ).toBeVisible({ timeout: 15000 });
   });
 
   test("onboarding : création du coffre puis accès au dashboard", async ({ page }) => {
+    test.setTimeout(60000);
     await page.goto("/");
 
-    // Écran de création du coffre
-    await expect(page.getByRole("heading", { name: /Créer votre coffre-fort/i })).toBeVisible();
+    // Écran de création du coffre (attend l'hydratation)
+    await expect(page.getByRole("heading", { name: /Créer votre coffre-fort/i })).toBeVisible({
+      timeout: 15000,
+    });
 
     // Remplit le formulaire de création
     await page
@@ -46,11 +53,12 @@ test.describe("Velora — coffre-fort et candidatures", () => {
 
     // Après création, le dashboard s'affiche
     await expect(page.getByRole("heading", { name: /Bonjour|Bonne|Bonsoir/i })).toBeVisible({
-      timeout: 15000,
+      timeout: 30000,
     });
   });
 
   test("création d'une candidature et affichage dans la liste", async ({ page }) => {
+    test.setTimeout(60000);
     // Crée le coffre
     await page.goto("/");
     await page
@@ -60,7 +68,7 @@ test.describe("Velora — coffre-fort et candidatures", () => {
     await page.getByLabel(/Confirmer la phrase/i).fill(PASSPHRASE);
     await page.getByRole("button", { name: /Créer le coffre/i }).click();
     await expect(page.getByRole("heading", { name: /Bonjour|Bonne|Bonsoir/i })).toBeVisible({
-      timeout: 15000,
+      timeout: 30000,
     });
 
     // Va sur la page candidatures
@@ -89,6 +97,7 @@ test.describe("Velora — coffre-fort et candidatures", () => {
   test("persistance : après rechargement, déverrouillage puis données retrouvées", async ({
     page,
   }) => {
+    test.setTimeout(60000);
     // Crée le coffre et une candidature
     await page.goto("/");
     await page
@@ -98,7 +107,7 @@ test.describe("Velora — coffre-fort et candidatures", () => {
     await page.getByLabel(/Confirmer la phrase/i).fill(PASSPHRASE);
     await page.getByRole("button", { name: /Créer le coffre/i }).click();
     await expect(page.getByRole("heading", { name: /Bonjour|Bonne|Bonsoir/i })).toBeVisible({
-      timeout: 15000,
+      timeout: 30000,
     });
 
     await page.goto("/candidatures");
@@ -126,6 +135,7 @@ test.describe("Velora — coffre-fort et candidatures", () => {
   });
 
   test("déverrouillage avec une mauvaise phrase affiche une erreur", async ({ page }) => {
+    test.setTimeout(60000);
     // Crée le coffre
     await page.goto("/");
     await page
@@ -135,7 +145,7 @@ test.describe("Velora — coffre-fort et candidatures", () => {
     await page.getByLabel(/Confirmer la phrase/i).fill(PASSPHRASE);
     await page.getByRole("button", { name: /Créer le coffre/i }).click();
     await expect(page.getByRole("heading", { name: /Bonjour|Bonne|Bonsoir/i })).toBeVisible({
-      timeout: 15000,
+      timeout: 30000,
     });
 
     // Recharge → verrouillé
@@ -151,6 +161,7 @@ test.describe("Velora — coffre-fort et candidatures", () => {
   });
 
   test("les autres pages sont accessibles (pas de 404)", async ({ page }) => {
+    test.setTimeout(60000);
     // Crée le coffre
     await page.goto("/");
     await page
@@ -160,7 +171,7 @@ test.describe("Velora — coffre-fort et candidatures", () => {
     await page.getByLabel(/Confirmer la phrase/i).fill(PASSPHRASE);
     await page.getByRole("button", { name: /Créer le coffre/i }).click();
     await expect(page.getByRole("heading", { name: /Bonjour|Bonne|Bonsoir/i })).toBeVisible({
-      timeout: 15000,
+      timeout: 30000,
     });
 
     const pages = [
@@ -183,6 +194,7 @@ test.describe("Velora — coffre-fort et candidatures", () => {
   test("modification d'une candidature : édition + dates de création/modification", async ({
     page,
   }) => {
+    test.setTimeout(60000);
     // Crée le coffre
     await page.goto("/");
     await page
@@ -192,7 +204,7 @@ test.describe("Velora — coffre-fort et candidatures", () => {
     await page.getByLabel(/Confirmer la phrase/i).fill(PASSPHRASE);
     await page.getByRole("button", { name: /Créer le coffre/i }).click();
     await expect(page.getByRole("heading", { name: /Bonjour|Bonne|Bonsoir/i })).toBeVisible({
-      timeout: 15000,
+      timeout: 30000,
     });
 
     // Crée une candidature
@@ -234,6 +246,7 @@ test.describe("Velora — coffre-fort et candidatures", () => {
   });
 
   test("verrouillage manuel retourne à l'écran de connexion", async ({ page }) => {
+    test.setTimeout(60000);
     // Crée le coffre
     await page.goto("/");
     await page
@@ -243,7 +256,7 @@ test.describe("Velora — coffre-fort et candidatures", () => {
     await page.getByLabel(/Confirmer la phrase/i).fill(PASSPHRASE);
     await page.getByRole("button", { name: /Créer le coffre/i }).click();
     await expect(page.getByRole("heading", { name: /Bonjour|Bonne|Bonsoir/i })).toBeVisible({
-      timeout: 15000,
+      timeout: 30000,
     });
 
     // Vérifie que le badge indique "Coffre déverrouillé"

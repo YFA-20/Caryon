@@ -15,7 +15,15 @@ export default defineConfig({
     baseURL: "http://127.0.0.1:3100",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
+    // Argon2id (64 MiB, t=3) est lent sur les runners CI partagés :
+    // 30s par défaut est trop juste pour la création du coffre.
+    actionTimeout: 30_000,
   },
+  expect: {
+    timeout: 30_000,
+  },
+  // Timeout global par test : 90s (création coffre Argon2id + opérations CRUD)
+  timeout: 90_000,
   projects: [
     {
       name: "chromium",

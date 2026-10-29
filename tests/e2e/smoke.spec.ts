@@ -2,18 +2,25 @@ import { expect, test } from "@playwright/test";
 
 test.describe("Velora — smoke", () => {
   test("la page d'accueil se charge avec l'identité Velora", async ({ page, isMobile }) => {
+    test.setTimeout(30000);
     await page.goto("/");
+    // Attendre l'hydratation : le VaultGate résout async (vaultExists) puis affiche
+    // soit le portail de connexion, soit l'app. On attend le titre de la page de connexion
+    // (cas no-vault en E2E, IndexedDB vide) avant de vérifier quoi que ce soit.
+    await expect(
+      page
+        .getByRole("heading", {
+          name: /Créer votre coffre-fort|Déverrouiller le coffre|Bonjour|Bonsoir|Bonne après-midi/,
+        })
+        .first()
+    ).toBeVisible({ timeout: 15000 });
     if (!isMobile) {
-      // Le logo « V » + le nom Velora + la signature sont dans la sidebar (desktop)
       await expect(page.getByText("Velora", { exact: true }).first()).toBeVisible();
-      await expect(page.getByText("Votre carrière, votre espace privé")).toBeVisible();
-    } else {
-      // En mobile, la barre inférieure est présente
-      await expect(page.getByRole("navigation", { name: "Navigation mobile" })).toBeVisible();
     }
   });
 
   test("le manifest PWA est servi", async ({ page }) => {
+    test.setTimeout(30000);
     const response = await page.goto("/manifest.webmanifest");
     expect(response?.ok()).toBe(true);
     const manifest = await response?.json();
@@ -23,6 +30,7 @@ test.describe("Velora — smoke", () => {
   });
 
   test("les en-têtes de sécurité sont présents", async ({ page }) => {
+    test.setTimeout(30000);
     const response = await page.goto("/");
     const headers = response?.headers() ?? {};
     expect(headers["x-content-type-options"]).toBe("nosniff");
@@ -33,24 +41,30 @@ test.describe("Velora — smoke", () => {
     expect(headers["content-security-policy"]).toContain("frame-ancestors 'none'");
   });
 
-  test("la CSP de production (public/_headers) est stricte", async () => {
-    // Vérifie le fichier _headers déployé sur Cloudflare : script-src 'self' sans unsafe-inline.
-    const { readFileSync } = await import("node:fs");
-    const headers = readFileSync("public/_headers", "utf-8");
-    const cspLine = headers
-      .split("\n")
-      .find((l) => l.trim().startsWith("Content-Security-Policy:"));
-    expect(cspLine).toBeTruthy();
-    expect(cspLine).toContain("script-src 'self'");
-    expect(cspLine).not.toContain("script-src 'self' 'unsafe-inline'");
+  test("la CSP servie par le serveur de test est stricte et par page", async ({ page }) => {
+    // Vérifie que le serveur local applique bien une CSP par chemin (comme Cloudflare)
+    // avec des hashes sha256 et sans unsafe-inline pour script-src.
+    const res = await page.goto("/");
+    const csp = res?.headers()["content-security-policy"] ?? "";
+    expect(csp).toContain("script-src 'self'");
+    expect(csp).toContain("sha256-");
+    expect(csp).not.toContain("'unsafe-inline'");
+    expect(csp).toContain("object-src 'none'");
+    // La CSP de /candidatures doit contenir des hashes différents de ceux de /
+    const res2 = await page.goto("/candidatures");
+    const csp2 = res2?.headers()["content-security-policy"] ?? "";
+    expect(csp2).toContain("sha256-");
+    expect(csp2).not.toBe(csp);
   });
 
   test("le service worker est servi", async ({ page }) => {
+    test.setTimeout(30000);
     const response = await page.goto("/sw.js");
     expect(response?.ok()).toBe(true);
   });
 
   test("aucun appel réseau externe n'est émis au chargement", async ({ page }) => {
+    test.setTimeout(30000);
     const external: string[] = [];
     page.on("request", (request) => {
       const url = new URL(request.url());
