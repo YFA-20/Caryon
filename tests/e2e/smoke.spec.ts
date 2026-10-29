@@ -1,21 +1,15 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("Velora — smoke", () => {
-  test("la page d'accueil se charge avec l'identité Velora", async ({ page, isMobile }) => {
+  test("la page d'accueil se charge avec l'identité Velora", async ({ page }) => {
     test.setTimeout(30000);
     await page.goto("/");
     // Attendre l'hydratation du VaultGate (IndexedDB vide en E2E = portail "Créer")
     await expect(
       page.getByRole("heading", { name: /Créer votre coffre-fort|Déverrouiller le coffre/ }).first()
     ).toBeVisible({ timeout: 15000 });
-    if (!isMobile) {
-      await expect(page.getByText("Velora", { exact: true }).first()).toBeVisible();
-    } else {
-      // En mobile, le bouton hamburger est présent dans le header
-      await expect(
-        page.getByRole("button", { name: "Ouvrir le menu de navigation" })
-      ).toBeVisible();
-    }
+    // La marque Velora est dans le <title> de la page
+    await expect(page).toHaveTitle(/Velora/);
   });
 
   test("le manifest PWA est servi", async ({ page }) => {

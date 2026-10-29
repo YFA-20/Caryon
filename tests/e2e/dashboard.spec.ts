@@ -17,6 +17,11 @@ async function createVaultAndUnlock(page: Page) {
   await page.getByLabel("Phrase secrète").first().fill(PASSPHRASE);
   await page.getByLabel("Confirmer la phrase").fill(PASSPHRASE);
   await page.getByRole("button", { name: "Créer le coffre" }).click();
+  // L'onboarding wizard s'affiche après création : on le saute s'il est visible
+  const skipBtn = page.getByRole("button", { name: "Passer le guide" });
+  if (await skipBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+    await skipBtn.click();
+  }
   // Après création, le dashboard s'affiche (session déverrouillée)
   await expect(page.getByRole("heading", { name: /Bonjour|Bonsoir|Bonne après-midi/ })).toBeVisible(
     { timeout: 30_000 }

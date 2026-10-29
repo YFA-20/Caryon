@@ -50,6 +50,11 @@ test.describe("Velora — coffre-fort et candidatures", () => {
       .fill(PASSPHRASE);
     await page.getByLabel(/Confirmer la phrase/i).fill(PASSPHRASE);
     await page.getByRole("button", { name: /Créer le coffre/i }).click();
+    // Saute l'onboarding wizard s'il apparaît
+    const skipBtn = page.getByRole("button", { name: "Passer le guide" });
+    if (await skipBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await skipBtn.click();
+    }
 
     // Après création, le dashboard s'affiche
     await expect(page.getByRole("heading", { name: /Bonjour|Bonne|Bonsoir/i })).toBeVisible({
@@ -67,6 +72,11 @@ test.describe("Velora — coffre-fort et candidatures", () => {
       .fill(PASSPHRASE);
     await page.getByLabel(/Confirmer la phrase/i).fill(PASSPHRASE);
     await page.getByRole("button", { name: /Créer le coffre/i }).click();
+    // Saute l'onboarding wizard s'il apparaît
+    const skipBtn = page.getByRole("button", { name: "Passer le guide" });
+    if (await skipBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await skipBtn.click();
+    }
     await expect(page.getByRole("heading", { name: /Bonjour|Bonne|Bonsoir/i })).toBeVisible({
       timeout: 30000,
     });
@@ -106,6 +116,11 @@ test.describe("Velora — coffre-fort et candidatures", () => {
       .fill(PASSPHRASE);
     await page.getByLabel(/Confirmer la phrase/i).fill(PASSPHRASE);
     await page.getByRole("button", { name: /Créer le coffre/i }).click();
+    // Saute l'onboarding wizard s'il apparaît
+    const skipBtn = page.getByRole("button", { name: "Passer le guide" });
+    if (await skipBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await skipBtn.click();
+    }
     await expect(page.getByRole("heading", { name: /Bonjour|Bonne|Bonsoir/i })).toBeVisible({
       timeout: 30000,
     });
@@ -144,6 +159,11 @@ test.describe("Velora — coffre-fort et candidatures", () => {
       .fill(PASSPHRASE);
     await page.getByLabel(/Confirmer la phrase/i).fill(PASSPHRASE);
     await page.getByRole("button", { name: /Créer le coffre/i }).click();
+    // Saute l'onboarding wizard s'il apparaît
+    const skipBtn = page.getByRole("button", { name: "Passer le guide" });
+    if (await skipBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await skipBtn.click();
+    }
     await expect(page.getByRole("heading", { name: /Bonjour|Bonne|Bonsoir/i })).toBeVisible({
       timeout: 30000,
     });
@@ -170,6 +190,11 @@ test.describe("Velora — coffre-fort et candidatures", () => {
       .fill(PASSPHRASE);
     await page.getByLabel(/Confirmer la phrase/i).fill(PASSPHRASE);
     await page.getByRole("button", { name: /Créer le coffre/i }).click();
+    // Saute l'onboarding wizard s'il apparaît
+    const skipBtn = page.getByRole("button", { name: "Passer le guide" });
+    if (await skipBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await skipBtn.click();
+    }
     await expect(page.getByRole("heading", { name: /Bonjour|Bonne|Bonsoir/i })).toBeVisible({
       timeout: 30000,
     });
@@ -203,6 +228,11 @@ test.describe("Velora — coffre-fort et candidatures", () => {
       .fill(PASSPHRASE);
     await page.getByLabel(/Confirmer la phrase/i).fill(PASSPHRASE);
     await page.getByRole("button", { name: /Créer le coffre/i }).click();
+    // Saute l'onboarding wizard s'il apparaît
+    const skipBtn = page.getByRole("button", { name: "Passer le guide" });
+    if (await skipBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await skipBtn.click();
+    }
     await expect(page.getByRole("heading", { name: /Bonjour|Bonne|Bonsoir/i })).toBeVisible({
       timeout: 30000,
     });
@@ -255,6 +285,11 @@ test.describe("Velora — coffre-fort et candidatures", () => {
       .fill(PASSPHRASE);
     await page.getByLabel(/Confirmer la phrase/i).fill(PASSPHRASE);
     await page.getByRole("button", { name: /Créer le coffre/i }).click();
+    // Saute l'onboarding wizard s'il apparaît
+    const skipBtn = page.getByRole("button", { name: "Passer le guide" });
+    if (await skipBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await skipBtn.click();
+    }
     await expect(page.getByRole("heading", { name: /Bonjour|Bonne|Bonsoir/i })).toBeVisible({
       timeout: 30000,
     });
