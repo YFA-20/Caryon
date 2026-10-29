@@ -70,7 +70,7 @@ detection de modification (GCM), restauration, aucun appel reseau pour les opera
 - [x] Liste des appareils appairés + révocation (UI)
 - [x] Sync automatique : hook `useAutoSync` (périodique 5 min + focus + visibilité)
 - [x] Navigation : item « Appairage » + recherche globale (Ctrl+K)
-- [ ] Appairage : liste des demandes en attente côté appareil A (endpoint `/pairing/pending`)
+- [x] Appairage : approbation/refus des demandes côté appareil A (endpoint `/pairing/pending` + UI)
 - [ ] Restauration multi-appareils (nouvel appareil depuis un backup cloud)
 
 ## 🔲 Phase 4 — Production & Release (v1.0.0)

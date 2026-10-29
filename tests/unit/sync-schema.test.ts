@@ -17,6 +17,8 @@ import {
   pairingInitResponseSchema,
   pairingStatusSchema,
   pairingConfirmRequestSchema,
+  pendingPairingSchema,
+  pendingPairingsResponseSchema,
   pairedDeviceSchema,
   deviceListResponseSchema,
   syncMetaSchema,
@@ -300,6 +302,75 @@ describe("pairedDeviceSchema", () => {
       deviceName: "a".repeat(101),
       pairedAt: "2025-01-15T10:00:00.000Z",
     });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("pendingPairingSchema", () => {
+  it("accepte une demande en attente valide", () => {
+    const result = pendingPairingSchema.safeParse({
+      pairingId: VALID_UUID,
+      newDeviceId: VALID_UUID_2,
+      newDeviceName: "iPhone de Yassine",
+      createdAt: "2025-01-15T10:00:00.000Z",
+      expiresAt: "2025-01-15T10:10:00.000Z",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejette un newDeviceName vide", () => {
+    const result = pendingPairingSchema.safeParse({
+      pairingId: VALID_UUID,
+      newDeviceId: VALID_UUID_2,
+      newDeviceName: "",
+      createdAt: "2025-01-15T10:00:00.000Z",
+      expiresAt: "2025-01-15T10:10:00.000Z",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejette un pairingId non-UUID", () => {
+    const result = pendingPairingSchema.safeParse({
+      pairingId: "pas-un-uuid",
+      newDeviceId: VALID_UUID_2,
+      newDeviceName: "Test",
+      createdAt: "2025-01-15T10:00:00.000Z",
+      expiresAt: "2025-01-15T10:10:00.000Z",
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("pendingPairingsResponseSchema", () => {
+  it("accepte une liste de demandes en attente", () => {
+    const result = pendingPairingsResponseSchema.safeParse({
+      pending: [
+        {
+          pairingId: VALID_UUID,
+          newDeviceId: VALID_UUID_2,
+          newDeviceName: "MacBook",
+          createdAt: "2025-01-15T10:00:00.000Z",
+          expiresAt: "2025-01-15T10:10:00.000Z",
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepte une liste vide", () => {
+    const result = pendingPairingsResponseSchema.safeParse({ pending: [] });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejette plus de 20 demandes", () => {
+    const pending = Array.from({ length: 21 }, () => ({
+      pairingId: VALID_UUID,
+      newDeviceId: VALID_UUID_2,
+      newDeviceName: "Test",
+      createdAt: "2025-01-15T10:00:00.000Z",
+      expiresAt: "2025-01-15T10:10:00.000Z",
+    }));
+    const result = pendingPairingsResponseSchema.safeParse({ pending });
     expect(result.success).toBe(false);
   });
 });

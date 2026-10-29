@@ -27,6 +27,8 @@ import {
   pairingStatusSchema,
   pairingConfirmRequestSchema,
   pairingConfirmResponseSchema,
+  pendingPairingsResponseSchema,
+  type PendingPairingsResponse,
   type SyncEnvelope,
   type PullResponse,
   type DeviceListResponse,
@@ -374,6 +376,34 @@ export async function confirmPairing(
   const json = await res.json();
   const parsed = pairingConfirmResponseSchema.safeParse(json);
   if (!parsed.success) throw new Error("Réponse serveur invalide (pairing confirm)");
+}
+
+/**
+ * Liste les demandes d'appairage en attente pour ce coffre (appareil A).
+ * Appelé par l'appareil déjà appairé pour afficher les demandes à approuver.
+ */
+export async function listPendingPairings(vaultId: string): Promise<PendingPairingsResponse> {
+  const endpoint = await getSyncEndpoint();
+  const deviceId = useSyncStore.getState().deviceId;
+  const res = await fetch(
+    `${endpoint}/pairing/pending?vaultId=${encodeURIComponent(vaultId)}&deviceId=${encodeURIComponent(deviceId)}`,
+    { method: "GET", headers: { Accept: "application/json" } }
+  );
+  if (!res.ok) throw new Error(`Demandes en attente indisponibles (HTTP ${res.status})`);
+  const json = await res.json();
+  const parsed = pendingPairingsResponseSchema.safeParse(json);
+  if (!parsed.success) throw new Error("Réponse serveur invalide (pairing pending)");
+  return parsed.data;
+}
+
+/**
+ * Confirme ou refuse une demande d'appairage (appareil A).
+ * Génère automatiquement la preuve de possession (HMAC dérivée du coffre).
+ */
+export async function approvePairing(pairingId: string, approved: boolean): Promise<void> {
+  const { generatePairingProof } = await import("@/lib/sync/pairing-proof");
+  const proof = await generatePairingProof(pairingId);
+  await confirmPairing(pairingId, approved, proof);
 }
 
 /** Liste les appareils appairés pour ce coffre. */

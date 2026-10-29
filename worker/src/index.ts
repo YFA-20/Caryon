@@ -17,6 +17,7 @@
  *   GET  /sync/records/:kind/:recordId?vaultId=  — récupérer un payload
  *   POST /pairing/init                           — demander un appairage
  *   GET  /pairing/status?pairingId=              — statut d'une demande
+ *   GET  /pairing/pending?vaultId=&deviceId=     — liste des demandes en attente
  *   POST /pairing/confirm                        — confirmer/refuser
  *   GET  /devices?vaultId=&deviceId=             — liste des appareils
  *   POST /devices/revoke                         — révoquer un appareil
@@ -425,6 +426,62 @@ async function handlePairingStatus(req: Request, env: Env): Promise<Response> {
   );
 }
 
+/**
+ * GET /pairing/pending?vaultId=&deviceId= — liste les demandes d'appairage
+ * en attente pour un coffre. Appelé par l'appareil A pour afficher les demandes
+ * à approuver/refuser. N'expose JAMAIS le code (seulement son hash existe côté serveur).
+ */
+async function handlePairingPending(req: Request, env: Env): Promise<Response> {
+  const origin = req.headers.get("Origin");
+  const url = new URL(req.url);
+  const vaultId = url.searchParams.get("vaultId");
+  const callerDeviceId = url.searchParams.get("deviceId");
+
+  if (!isUuid(vaultId) || !isUuid(callerDeviceId)) {
+    return errorResponse("vaultId ou deviceId invalide", 400, origin, env);
+  }
+
+  // Vérifie que l'appelant est bien un appareil appairé (non révoqué).
+  const paired = await isDevicePaired(env.DB, vaultId, callerDeviceId);
+  if (!paired) {
+    return errorResponse("Appareil non appairé", 403, origin, env);
+  }
+
+  // Marque les demandes expirées (housekeeping léger).
+  await env.DB.prepare(
+    "UPDATE pairing_requests SET status = 'expired' WHERE vault_id = ? AND status = 'pending' AND expires_at < ?"
+  )
+    .bind(vaultId, new Date().toISOString())
+    .run();
+
+  // Retourne les demandes en attente (non expirées).
+  const { results } = await env.DB.prepare(
+    `SELECT pairing_id, new_device_id, new_device_name, created_at, expires_at
+     FROM pairing_requests
+     WHERE vault_id = ? AND status = 'pending' AND expires_at > ?
+     ORDER BY created_at DESC
+     LIMIT 20`
+  )
+    .bind(vaultId, new Date().toISOString())
+    .all<{
+      pairing_id: string;
+      new_device_id: string;
+      new_device_name: string;
+      created_at: string;
+      expires_at: string;
+    }>();
+
+  const pending = (results ?? []).map((r) => ({
+    pairingId: r.pairing_id,
+    newDeviceId: r.new_device_id,
+    newDeviceName: r.new_device_name,
+    createdAt: r.created_at,
+    expiresAt: r.expires_at,
+  }));
+
+  return jsonResponse({ pending }, 200, origin, env);
+}
+
 /** POST /pairing/confirm — confirme ou refuse (appareil A). */
 async function handlePairingConfirm(req: Request, env: Env): Promise<Response> {
   const origin = req.headers.get("Origin");
@@ -621,6 +678,9 @@ const worker = {
       }
       if (path === "/pairing/status" && req.method === "GET") {
         return handlePairingStatus(req, env);
+      }
+      if (path === "/pairing/pending" && req.method === "GET") {
+        return handlePairingPending(req, env);
       }
       if (path === "/pairing/confirm" && req.method === "POST") {
         return handlePairingConfirm(req, env);

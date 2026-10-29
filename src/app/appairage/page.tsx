@@ -24,6 +24,7 @@ import {
   RefreshCw,
   ShieldCheck,
   Smartphone,
+  UserPlus,
   XCircle,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
@@ -39,10 +40,13 @@ import {
   requestPairing,
   pollPairingStatus,
   listPairedDevices,
+  listPendingPairings,
+  approvePairing,
   revokeDevice,
   syncNow,
   isSyncReady,
 } from "@/lib/sync/sync-service";
+import type { PendingPairing } from "@/lib/sync/schema";
 import type { PairedDevice } from "@/lib/sync/schema";
 
 type PairingMode = "menu" | "generate" | "enter-code";
@@ -72,6 +76,12 @@ export default function AppairagePage() {
   const [devices, setDevices] = useState<PairedDevice[]>([]);
   const [loadingDevices, setLoadingDevices] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
+
+  // Demandes d'appairage en attente (appareil A)
+  const [pendingPairings, setPendingPairings] = useState<PendingPairing[]>([]);
+  const [loadingPending, setLoadingPending] = useState(false);
+  const [actingOnPairingId, setActingOnPairingId] = useState<string | null>(null);
+  const pendingPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Détection du nom de l'appareil (basique)
   useEffect(() => {
@@ -112,6 +122,35 @@ export default function AppairagePage() {
   useEffect(() => {
     if (syncReady) loadDevices();
   }, [syncReady, loadDevices]);
+
+  // Charge les demandes d'appairage en attente
+  const loadPendingPairings = useCallback(async () => {
+    const session = getSession();
+    if (!session) return;
+    setLoadingPending(true);
+    try {
+      const result = await listPendingPairings(session.vault.id);
+      setPendingPairings(result.pending);
+    } catch (err) {
+      console.error("[appairage] Erreur chargement demandes:", err);
+    } finally {
+      setLoadingPending(false);
+    }
+  }, []);
+
+  // Poll les demandes en attente toutes les 5 secondes (appareil A)
+  useEffect(() => {
+    if (!syncReady) return;
+    loadPendingPairings();
+    pendingPollRef.current = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        loadPendingPairings();
+      }
+    }, 5000);
+    return () => {
+      if (pendingPollRef.current) clearInterval(pendingPollRef.current);
+    };
+  }, [syncReady, loadPendingPairings]);
 
   // Nettoyage des intervalles au démontage
   useEffect(() => {
@@ -229,6 +268,29 @@ export default function AppairagePage() {
       console.error("[appairage] Erreur demande:", err);
       setRequestState("error");
       toastError(err instanceof Error ? err.message : "Erreur lors de la demande d'appairage.");
+    }
+  }
+
+  // --- Approbation / refus de demandes d'appairage (appareil A) ---
+
+  async function handleApprovePairing(pairingId: string, approved: boolean) {
+    setActingOnPairingId(pairingId);
+    try {
+      await approvePairing(pairingId, approved);
+      if (approved) {
+        toastSuccess("Appareil approuvé. Synchronisation en cours…");
+        syncNow().catch(() => {});
+      } else {
+        toastSuccess("Demande refusée.");
+      }
+      // Recharge les listes.
+      loadPendingPairings();
+      loadDevices();
+    } catch (err) {
+      console.error("[appairage] Erreur approbation:", err);
+      toastError(err instanceof Error ? err.message : "Erreur lors de l'approbation.");
+    } finally {
+      setActingOnPairingId(null);
     }
   }
 
@@ -528,6 +590,104 @@ export default function AppairagePage() {
             </Button>
           </Card>
         )}
+
+        {/* Demandes d'appairage en attente (appareil A) */}
+        <Card className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-card-elevated">
+                <UserPlus className="h-5 w-5 text-lavender" aria-hidden />
+              </div>
+              <div>
+                <CardTitle className="text-lg">Demandes en attente</CardTitle>
+                <CardDescription>Appareils qui souhaitent rejoindre votre coffre.</CardDescription>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={loadPendingPairings}
+              disabled={loadingPending}
+            >
+              {loadingPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              ) : (
+                <RefreshCw className="h-4 w-4" aria-hidden />
+              )}
+            </Button>
+          </div>
+
+          {pendingPairings.length === 0 ? (
+            <p className="text-sm text-secondary">
+              {loadingPending ? "Chargement…" : "Aucune demande en attente."}
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {pendingPairings.map((pending) => {
+                const expiresIn = Math.max(
+                  0,
+                  Math.round((new Date(pending.expiresAt).getTime() - Date.now()) / 1000 / 60)
+                );
+                return (
+                  <div
+                    key={pending.pairingId}
+                    className="flex items-center justify-between rounded-xl border border-lavender/25 bg-lavender/5 p-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-card-elevated">
+                        <Smartphone className="h-4 w-4 text-lavender" aria-hidden />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-primary">{pending.newDeviceName}</p>
+                        <p className="text-xs text-secondary">
+                          Demandé il y a{" "}
+                          {Math.round(
+                            (Date.now() - new Date(pending.createdAt).getTime()) / 1000 / 60
+                          )}{" "}
+                          min · expire dans {expiresIn} min
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-success hover:bg-success/10"
+                        disabled={actingOnPairingId === pending.pairingId}
+                        onClick={() => handleApprovePairing(pending.pairingId, true)}
+                      >
+                        {actingOnPairingId === pending.pairingId ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                        ) : (
+                          <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+                        )}
+                        Approuver
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-danger hover:bg-danger/10"
+                        disabled={actingOnPairingId === pending.pairingId}
+                        onClick={() => handleApprovePairing(pending.pairingId, false)}
+                      >
+                        <XCircle className="h-3.5 w-3.5" aria-hidden />
+                        Refuser
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="flex items-start gap-2 rounded-lg border border-lavender/25 bg-lavender/5 p-3 text-xs text-secondary">
+            <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-lavender" aria-hidden />
+            <span>
+              Approuver un appareil lui donne accès à vos données chiffrées. Vérifiez le nom de
+              l&apos;appareil et le contexte avant d&apos;approuver.
+            </span>
+          </div>
+        </Card>
 
         {/* Liste des appareils appairés */}
         <Card className="space-y-4">

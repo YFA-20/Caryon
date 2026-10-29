@@ -154,6 +154,27 @@ export const pairingConfirmResponseSchema = z.object({
 export type PairingConfirmResponse = z.infer<typeof pairingConfirmResponseSchema>;
 
 // ---------------------------------------------------------------------------
+// Demandes d'appairage en attente (côté appareil A)
+// ---------------------------------------------------------------------------
+
+/** Une demande d'appairage en attente de confirmation. */
+export const pendingPairingSchema = z.object({
+  pairingId: z.string().uuid(),
+  newDeviceId: deviceIdSchema,
+  newDeviceName: z.string().min(1).max(100),
+  createdAt: z.string().datetime(),
+  expiresAt: z.string().datetime(),
+});
+
+export type PendingPairing = z.infer<typeof pendingPairingSchema>;
+
+export const pendingPairingsResponseSchema = z.object({
+  pending: z.array(pendingPairingSchema).max(20),
+});
+
+export type PendingPairingsResponse = z.infer<typeof pendingPairingsResponseSchema>;
+
+// ---------------------------------------------------------------------------
 // Liste des appareils appairés
 // ---------------------------------------------------------------------------
 

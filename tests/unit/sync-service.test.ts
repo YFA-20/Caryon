@@ -248,6 +248,98 @@ describe("sync-service", () => {
     });
   });
 
+  describe("listPendingPairings", () => {
+    it("retourne les demandes en attente (mock fetch)", async () => {
+      await createVault(TEST_PASSPHRASE, { testMode: true });
+
+      const fetchMock = vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            pending: [
+              {
+                pairingId: "550e8400-e29b-41d4-a716-446655440000",
+                newDeviceId: "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+                newDeviceName: "iPhone de test",
+                createdAt: "2025-01-15T10:00:00.000Z",
+                expiresAt: "2025-01-15T10:10:00.000Z",
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+      vi.stubGlobal("fetch", fetchMock);
+
+      const { listPendingPairings } = await import("@/lib/sync/sync-service");
+      const session = (await import("@/lib/vault/vault-service")).getSession();
+      const result = await listPendingPairings(session!.vault.id);
+
+      expect(result.pending).toHaveLength(1);
+      expect(result.pending[0]!.newDeviceName).toBe("iPhone de test");
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/pairing/pending"),
+        expect.objectContaining({ method: "GET" })
+      );
+
+      lock();
+    });
+
+    it("retourne une liste vide si aucune demande", async () => {
+      await createVault(TEST_PASSPHRASE, { testMode: true });
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(JSON.stringify({ pending: [] }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          })
+        )
+      );
+
+      const { listPendingPairings } = await import("@/lib/sync/sync-service");
+      const session = (await import("@/lib/vault/vault-service")).getSession();
+      const result = await listPendingPairings(session!.vault.id);
+
+      expect(result.pending).toHaveLength(0);
+      lock();
+    });
+  });
+
+  describe("approvePairing", () => {
+    it("envoie une confirmation avec preuve HMAC (mock fetch)", async () => {
+      await createVault(TEST_PASSPHRASE, { testMode: true });
+
+      const fetchMock = vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+      vi.stubGlobal("fetch", fetchMock);
+
+      const { approvePairing } = await import("@/lib/sync/sync-service");
+      await approvePairing("550e8400-e29b-41d4-a716-446655440000", true);
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/pairing/confirm"),
+        expect.objectContaining({ method: "POST" })
+      );
+      const [, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+      const body = JSON.parse(options.body as string);
+      expect(body.approved).toBe(true);
+      expect(body.proof).toBeTruthy();
+      expect(body.proof.length).toBeGreaterThan(0);
+
+      lock();
+    });
+
+    it("lève une erreur si le coffre est verrouillé", async () => {
+      const { approvePairing } = await import("@/lib/sync/sync-service");
+      await expect(approvePairing("550e8400-e29b-41d4-a716-446655440000", true)).rejects.toThrow();
+    });
+  });
+
   describe("tombstones", () => {
     it("une tombstone distante supprime l'enregistrement local", async () => {
       await createVault(TEST_PASSPHRASE, { testMode: true });
