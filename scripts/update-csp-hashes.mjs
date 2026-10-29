@@ -99,9 +99,14 @@ function buildCsp(hashes) {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
-    // connect-src : Hugging Face pour le téléchargement des modèles WebLLM.
-    // Restreint aux hôtes HF uniquement (pas de wildcard ouvert).
-    "connect-src 'self' https://huggingface.co https://*.hf.co https://cas-bridge.xethub.hf.co https://cdn-lfs.huggingface.co https://cdn-lfs-us-1.hf.co",
+    // connect-src : Hugging Face + GitHub Raw pour WebLLM.
+    // - huggingface.co : métadonnées du modèle (config, tokenizer)
+    // - *.hf.co : CDN LFS (cdn-lfs.hf.co, cdn-lfs-us-1.hf.co, cdn-lfs-eu-1.hf.co)
+    // - *.cdn.hf.co : CDN Xet multi-niveaux (us.aws.cdn.hf.co, us.gcp.cdn.hf.co, etc.)
+    // - *.xethub.hf.co : pont Xet (transfer.xethub.hf.co, cas-bridge.xethub.hf.co)
+    // - raw.githubusercontent.com : bibliothèque WASM du modèle (model_lib)
+    // Source : https://huggingface.co/.well-known/meta.json
+    "connect-src 'self' https://huggingface.co https://*.hf.co https://*.cdn.hf.co https://*.xethub.hf.co https://raw.githubusercontent.com",
     "worker-src 'self' blob:",
     "manifest-src 'self'",
     "object-src 'none'",
