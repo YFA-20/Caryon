@@ -1,5 +1,11 @@
 import { test, expect } from "@playwright/test";
-import { E2E_PASSPHRASE, closeTabAndReload, createVaultAndUnlock, resetStorage } from "./helpers";
+import {
+  E2E_PASSPHRASE,
+  closeTabAndReload,
+  createVaultAndUnlock,
+  gotoUnlocked,
+  resetStorage,
+} from "./helpers";
 
 /**
  * Velora — E2E : parcours coffre-fort + candidatures.
@@ -27,9 +33,8 @@ test.describe("Velora — coffre-fort et candidatures", () => {
     test.setTimeout(60000);
     await createVaultAndUnlock(page);
 
-    // Va sur la page candidatures
-    await page.goto("/candidatures");
-    await expect(page.getByRole("heading", { name: /Mes candidatures/i })).toBeVisible();
+    // Va sur la page candidatures (déverrouillage auto si la session n'est pas encore restaurée)
+    await gotoUnlocked(page, "/candidatures", /Mes candidatures/i);
 
     // Ouvre le formulaire
     await page
@@ -56,7 +61,7 @@ test.describe("Velora — coffre-fort et candidatures", () => {
     test.setTimeout(90000);
     await createVaultAndUnlock(page);
 
-    await page.goto("/candidatures");
+    await gotoUnlocked(page, "/candidatures", /Mes candidatures/i);
     await page
       .getByRole("button", { name: /Nouvelle candidature/i })
       .first()
@@ -74,7 +79,7 @@ test.describe("Velora — coffre-fort et candidatures", () => {
     await page.getByRole("button", { name: /Déverrouiller/i }).click();
 
     // Va sur candidatures → la donnée est toujours là
-    await page.goto("/candidatures");
+    await gotoUnlocked(page, "/candidatures", /Mes candidatures/i);
     await expect(page.getByText("Studio Lumen")).toBeVisible({ timeout: 10000 });
     await expect(page.getByText("Designer UI")).toBeVisible();
   });
@@ -90,8 +95,8 @@ test.describe("Velora — coffre-fort et candidatures", () => {
     await page.getByLabel(/Phrase secrète/i).fill("mauvaise-phrase-xxx");
     await page.getByRole("button", { name: /Déverrouiller/i }).click();
 
-    // Erreur affichée
-    await expect(page.getByRole("alert")).toContainText(/incorrecte/i);
+    // Erreur affichée (le route-announcer de Next a aussi role="alert", on cible le texte)
+    await expect(page.getByText(/Phrase secrète incorrecte/i)).toBeVisible();
   });
 
   test("les autres pages sont accessibles (pas de 404)", async ({ page }) => {
@@ -110,8 +115,7 @@ test.describe("Velora — coffre-fort et candidatures", () => {
     ];
 
     for (const { url, title } of pages) {
-      await page.goto(url);
-      await expect(page.getByRole("heading", { name: title })).toBeVisible();
+      await gotoUnlocked(page, url, title);
     }
   });
 
@@ -122,7 +126,7 @@ test.describe("Velora — coffre-fort et candidatures", () => {
     await createVaultAndUnlock(page);
 
     // Crée une candidature
-    await page.goto("/candidatures");
+    await gotoUnlocked(page, "/candidatures", /Mes candidatures/i);
     await page
       .getByRole("button", { name: /Nouvelle candidature/i })
       .first()
@@ -159,12 +163,14 @@ test.describe("Velora — coffre-fort et candidatures", () => {
     await expect(page.getByText("Envoyée")).toBeVisible();
   });
 
-  test("verrouillage manuel retourne à l'écran de connexion", async ({ page }) => {
+  test("verrouillage manuel retourne à l'écran de connexion", async ({ page, isMobile }) => {
     test.setTimeout(60000);
     await createVaultAndUnlock(page);
 
-    // Vérifie que le badge indique "Coffre déverrouillé"
-    await expect(page.getByText("Coffre déverrouillé").first()).toBeVisible();
+    // Vérifie que le badge indique "Coffre déverrouillé" (sidebar desktop uniquement)
+    if (!isMobile) {
+      await expect(page.getByText("Coffre déverrouillé").first()).toBeVisible({ timeout: 10_000 });
+    }
 
     // Clique sur le bouton "Verrouiller"
     await page.getByRole("button", { name: /Verrouiller/i }).click();

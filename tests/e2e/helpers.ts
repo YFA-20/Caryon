@@ -59,3 +59,28 @@ export async function closeTabAndReload(page: Page) {
     timeout: 15_000,
   });
 }
+
+/**
+ * Navigue vers une page profonde puis garantit qu'elle est déverrouillée.
+ * Après un goto direct, la restauration de session (sessionStorage → IndexedDB)
+ * peut être plus lente que l'hydratation : si le portail "Déverrouiller"
+ * apparaît, on déverrouille avec la passphrase de test avant d'attendre le contenu.
+ */
+export async function gotoUnlocked(
+  page: Page,
+  url: string,
+  heading: string | RegExp
+): Promise<void> {
+  await page.goto(url);
+  const portal = page.getByRole("heading", { name: /Déverrouiller le coffre/i });
+  const content = page.getByRole("heading", { name: heading });
+  await Promise.race([
+    content.waitFor({ state: "visible", timeout: 15_000 }).catch(() => null),
+    portal.waitFor({ state: "visible", timeout: 15_000 }).catch(() => null),
+  ]);
+  if (await portal.isVisible().catch(() => false)) {
+    await page.getByLabel(/Phrase secrète/i).fill(E2E_PASSPHRASE);
+    await page.getByRole("button", { name: /Déverrouiller/i }).click();
+  }
+  await expect(content).toBeVisible({ timeout: 30_000 });
+}

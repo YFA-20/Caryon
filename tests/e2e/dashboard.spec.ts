@@ -41,9 +41,9 @@ test.describe("Velora — dashboard « Aujourd'hui »", () => {
     test.setTimeout(90000);
     test.skip(isMobile, "Le bouton Mode démo est dans le header desktop");
     await page.getByRole("button", { name: "Mode démo" }).click();
-    await expect(page.getByRole("status")).toContainText("Mode démonstration");
+    // Le bandeau démo a role="status", mais les toasts aussi : on le cible par son texte
     await expect(page.getByText(/données affichées sont fictives/)).toBeVisible();
-    await expect(page.getByText("Votre pipeline")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Votre pipeline" })).toBeVisible();
     await expect(page.getByText("Actives", { exact: true })).toBeVisible();
     await expect(page.getByText("Entretiens", { exact: true })).toBeVisible();
     await expect(page.getByText("Relances", { exact: true })).toBeVisible();
@@ -54,7 +54,7 @@ test.describe("Velora — dashboard « Aujourd'hui »", () => {
     test.setTimeout(90000);
     test.skip(isMobile, "Le bouton Mode démo est dans le header desktop");
     await page.getByRole("button", { name: "Mode démo" }).click();
-    await expect(page.getByRole("status")).toContainText("Mode démonstration");
+    await expect(page.getByText(/données affichées sont fictives/)).toBeVisible();
     await page.getByRole("button", { name: "Quitter la démo" }).first().click();
     await expect(
       page.getByRole("heading", { name: "Aucune candidature pour le moment" })
@@ -87,7 +87,7 @@ test.describe("Velora — responsive mobile", () => {
     await createVaultAndUnlock(page);
     // Ouvre le drawer mobile
     await page.getByRole("button", { name: "Ouvrir le menu de navigation" }).click();
-    await expect(page.getByRole("navigation", { name: "Menu de navigation" })).toBeVisible();
+    await expect(page.getByRole("complementary", { name: "Menu de navigation" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Mes candidatures" })).toBeVisible();
   });
 });
