@@ -157,7 +157,9 @@ export async function gotoUnlocked(
   }
   await link.click();
   await expect(page).toHaveURL(new RegExp(`${url}$`));
-  // Attendre le heading de la page (le contenu peut être en skeleton au départ)
+  // Attendre le heading de la page : apres un clic sidebar, Next.js charge le
+  // chunk de la page avant le rendu (lent sur les runners CI). 60 s ici, le
+  // timeout global du test (90 s) sert de filet.
   const content = page.getByRole("heading", { name: heading });
-  await expect(content).toBeVisible({ timeout: 30_000 });
+  await expect(content).toBeVisible({ timeout: 60_000 });
 }

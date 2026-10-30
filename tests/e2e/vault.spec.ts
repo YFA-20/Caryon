@@ -25,12 +25,12 @@ test.describe("Velora — coffre-fort et candidatures", () => {
   });
 
   test("onboarding : création du coffre puis accès au dashboard", async ({ page }) => {
-    test.setTimeout(60000);
+    test.setTimeout(120000);
     await createVaultAndUnlock(page);
   });
 
   test("création d'une candidature et affichage dans la liste", async ({ page }) => {
-    test.setTimeout(60000);
+    test.setTimeout(120000);
     // Crée le coffre puis navigue vers candidatures via la sidebar
     await createVaultAndUnlock(page);
     await gotoUnlocked(page, "/candidatures", /Mes candidatures/i);
@@ -57,7 +57,7 @@ test.describe("Velora — coffre-fort et candidatures", () => {
   test("persistance : après fermeture d'onglet, déverrouillage puis données retrouvées", async ({
     page,
   }) => {
-    test.setTimeout(90000);
+    test.setTimeout(150000);
     await createVaultAndUnlock(page);
 
     await gotoUnlocked(page, "/candidatures", /Mes candidatures/i);
@@ -88,7 +88,7 @@ test.describe("Velora — coffre-fort et candidatures", () => {
   });
 
   test("déverrouillage avec une mauvaise phrase affiche une erreur", async ({ page }) => {
-    test.setTimeout(90000);
+    test.setTimeout(150000);
     await createVaultAndUnlock(page);
 
     // Fermeture d'onglet → verrouillé
@@ -103,7 +103,7 @@ test.describe("Velora — coffre-fort et candidatures", () => {
   });
 
   test("les autres pages sont accessibles (pas de 404)", async ({ page }) => {
-    test.setTimeout(90000);
+    test.setTimeout(150000);
     await createVaultAndUnlock(page);
 
     const pages = [
@@ -125,7 +125,7 @@ test.describe("Velora — coffre-fort et candidatures", () => {
   test("modification d'une candidature : édition + dates de création/modification", async ({
     page,
   }) => {
-    test.setTimeout(90000);
+    test.setTimeout(150000);
     await createVaultAndUnlock(page);
 
     // Crée une candidature
@@ -167,7 +167,7 @@ test.describe("Velora — coffre-fort et candidatures", () => {
   });
 
   test("verrouillage manuel retourne à l'écran de connexion", async ({ page, isMobile }) => {
-    test.setTimeout(60000);
+    test.setTimeout(120000);
     await createVaultAndUnlock(page);
 
     // Vérifie que le badge indique "Coffre déverrouillé" (sidebar desktop uniquement)

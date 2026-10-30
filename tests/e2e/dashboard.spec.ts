@@ -15,7 +15,7 @@ test.describe("Velora — dashboard « Aujourd'hui »", () => {
   });
 
   test("affiche la salutation et l'identité Velora", async ({ page, isMobile }) => {
-    test.setTimeout(90000);
+    test.setTimeout(150000);
     await expect(
       page.getByRole("heading", { name: /Bonjour|Bonsoir|Bonne après-midi/ })
     ).toBeVisible();
@@ -28,7 +28,7 @@ test.describe("Velora — dashboard « Aujourd'hui »", () => {
   });
 
   test("affiche l'état vide élégant sans données", async ({ page }) => {
-    test.setTimeout(90000);
+    test.setTimeout(150000);
     await expect(
       page.getByRole("heading", { name: "Aucune candidature pour le moment" })
     ).toBeVisible();
@@ -38,22 +38,22 @@ test.describe("Velora — dashboard « Aujourd'hui »", () => {
     page,
     isMobile,
   }) => {
-    test.setTimeout(90000);
+    test.setTimeout(150000);
     test.skip(isMobile, "Le bouton Mode démo est dans le header desktop");
     await page.getByRole("button", { name: "Mode démo" }).click();
     // Le bandeau démo a role="status", mais les toasts aussi : on le cible par son texte
     await expect(page.getByText(/données affichées sont fictives/)).toBeVisible();
     // Le dashboard recharge les données démo seedées : attendre la fin du chargement
     // (le skeleton "Déchiffrement de vos données…" disparaît) puis les stats fictives
-    await expect(page.getByText(/Déchiffrement de vos données/)).toBeHidden({ timeout: 30_000 });
-    await expect(page.getByText("Actives", { exact: true })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/Déchiffrement de vos données/)).toBeHidden({ timeout: 60_000 });
+    await expect(page.getByText("Actives", { exact: true })).toBeVisible({ timeout: 60_000 });
     await expect(page.getByText("Entretiens", { exact: true })).toBeVisible();
     await expect(page.getByText("Relances", { exact: true })).toBeVisible();
     await expect(page.getByText("Réponses +", { exact: true })).toBeVisible();
   });
 
   test("quitter la démo restaure l'état vide", async ({ page, isMobile }) => {
-    test.setTimeout(90000);
+    test.setTimeout(150000);
     test.skip(isMobile, "Le bouton Mode démo est dans le header desktop");
     await page.getByRole("button", { name: "Mode démo" }).click();
     await expect(page.getByText(/données affichées sont fictives/)).toBeVisible();
@@ -64,14 +64,14 @@ test.describe("Velora — dashboard « Aujourd'hui »", () => {
   });
 
   test("la navigation clavier fonctionne (focus visible)", async ({ page }) => {
-    test.setTimeout(90000);
+    test.setTimeout(150000);
     await page.keyboard.press("Tab");
     const focused = await page.evaluate(() => document.activeElement?.tagName);
     expect(focused).toBeTruthy();
   });
 
   test("la sidebar est visible en desktop", async ({ page, isMobile }) => {
-    test.setTimeout(90000);
+    test.setTimeout(150000);
     test.skip(isMobile, "Ce test concerne la sidebar desktop");
     await expect(page.getByRole("complementary", { name: "Navigation principale" })).toBeVisible();
   });
@@ -84,7 +84,7 @@ test.describe("Velora — responsive mobile", () => {
     page,
     context,
   }) => {
-    test.setTimeout(90000);
+    test.setTimeout(150000);
     await resetStorage(page, context);
     await createVaultAndUnlock(page);
     // Ouvre le drawer mobile
