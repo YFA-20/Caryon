@@ -140,20 +140,20 @@ test.describe("Velora — coffre-fort et candidatures", () => {
     await page.getByRole("button", { name: /Enregistrer/i }).click();
     await expect(page.getByText("Atelier Nova")).toBeVisible();
 
-    // Vérifie que les dates sont affichées (création + modification)
+    // Les dates complètes ne sont affichées que dans le formulaire d'édition
+    // (la carte kanban n'affiche que la date courte) : on ouvre le formulaire.
+    await page
+      .getByRole("button", { name: /Modifier/i })
+      .first()
+      .click();
     await expect(page.getByText(/Créée le \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}/)).toBeVisible();
-    await expect(page.getByText(/Modifiée le \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}/)).toBeVisible();
-
-    // Clique sur "Modifier"
-    await page.getByRole("button", { name: /Modifier/i }).click();
+    await expect(
+      page.getByText(/Dernière modification le \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}/)
+    ).toBeVisible();
 
     // Vérifie que le formulaire d'édition est pré-rempli
     await expect(page.getByLabel(/Entreprise/i)).toHaveValue("Atelier Nova");
     await expect(page.getByLabel(/Poste/i)).toHaveValue("Développeur front-end");
-
-    // Vérifie l'affichage des dates dans le formulaire d'édition
-    await expect(page.getByText(/Créée le/)).toBeVisible();
-    await expect(page.getByText(/Dernière modification le/)).toBeVisible();
 
     // Modifie le poste et le statut
     await page.getByLabel(/Poste/i).fill("Développeur full-stack");

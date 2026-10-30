@@ -46,7 +46,7 @@ test.describe("Velora — dashboard « Aujourd'hui »", () => {
     // Le dashboard recharge les données démo seedées : attendre le heading
     // « Votre pipeline » (rendu uniquement quand les données fictives sont lues)
     // puis les indicateurs.
-    await expect(page.getByRole("heading", { name: "Votre pipeline" })).toBeVisible({
+    await expect(page.getByRole("heading", { name: "Votre pipeline" }).first()).toBeVisible({
       timeout: 60_000,
     });
     await expect(page.getByText("Actives", { exact: true })).toBeVisible({ timeout: 60_000 });
