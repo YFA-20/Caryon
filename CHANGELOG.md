@@ -5,6 +5,19 @@ Toutes les modifications notables de Velora sont documentées dans ce fichier.
 Le format est inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le projet
 adhere au [Versionnage Semantique](https://semver.org/lang/fr/).
 
+## [0.5.0] — 2026-10-30
+
+### Corrige — Fiabilité CI (depuis v0.3.0)
+
+- Suite E2E Playwright entièrement verte : **37 tests en ~41 s** (contre 28 min / 9 échecs avant).
+- Causes racines corrigées : build E2E dédié avec KDF allégé (prod inchangé, garde-fou `e2e-build-guard.test.ts`), serveur statique E2E fidèle à Cloudflare (`/route` → `route.html` + bonne CSP), import dynamique du chunk WebLLM (6,1 Mo) hors du rendu initial.
+
+### Chore
+
+- Branches distantes mergées supprimées (34 branches), il ne reste que `main`.
+
+---
+
 ## [0.3.0] — 2026-10-30
 
 ### Ajoute — Accessibilité WCAG 2.2 AA (PR #36)
