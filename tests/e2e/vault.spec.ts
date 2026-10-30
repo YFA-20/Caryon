@@ -162,12 +162,12 @@ test.describe("Velora — coffre-fort et candidatures", () => {
     // Enregistre
     await page.getByRole("button", { name: /Enregistrer les modifications/i }).click();
 
-    // Vérifie que la modification est appliquée. La vue persistée (kanban par
-    // défaut) n'affiche pas le libellé du statut sur la carte : on passe en vue
-    // Liste, qui affiche le badge de statut, puis on vérifie.
+    // Vérifie que la modification est appliquée. On passe en vue Liste et on cible
+    // le badge de statut de la carte (le <select> « Filtrer par statut » contient aussi une option
+    // « Envoyée » : on cible le span badge de la carte).
     await expect(page.getByText("Développeur full-stack")).toBeVisible();
     await page.getByRole("button", { name: "Liste" }).click();
-    await expect(page.getByText("Envoyée", { exact: true }).first()).toBeVisible({
+    await expect(page.locator("span").getByText("Envoyée", { exact: true }).first()).toBeVisible({
       timeout: 15_000,
     });
   });
