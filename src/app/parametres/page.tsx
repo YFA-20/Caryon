@@ -740,8 +740,8 @@ export default function ParametresPage() {
               <span>
                 Vos donn\u00e9es sont chiffr\u00e9es avec votre cl\u00e9 ma\u00eetre avant
                 d\u2019\u00eatre envoy\u00e9es. Le serveur de synchronisation ne re\u00e7oit que du
-                ciphertext illisible sans votre phrase secr\u00e8te. Aucun mot de passe, aucune
-                cl\u00e9 n\u2019est jamais transmis.
+                ciphertext illisible sans votre phrase secr\u00e8te. Aucun mot de passe, aucune clé
+                maître n’est jamais transmise.
               </span>
             </div>
 
