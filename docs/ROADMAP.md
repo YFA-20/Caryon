@@ -100,6 +100,9 @@ confidentialité (la phrase secrète reste le seul verrou).
 
 ## Prochaines priorités recommandées
 
-1. **Déploiement du Worker de sync** (Cloudflare D1 + R2 + wrangler — voir `docs/DEPLOYMENT.md`)
-2. **Tag v0.4.0 + release GitHub** (après merge de la branche courante)
-3. **Audit accessibilité WCAG 2.2 AA** (dernier gros morceau avant v1.0.0)
+_(Mises à jour 2026-10-30 : Worker de sync déployé, WCAG 2.2 AA fait (PR #36), releases v0.3.0/v0.5.0 publiées.)_
+
+1. **Test manuel avec lecteur d'écran** (NVDA/VoiceOver) avant v1.0.0 — l'audit WCAG était statique + automatisé (`docs/A11Y.md`)
+2. **Vérifier la synchro multi-appareils en conditions réelles** (appairage 2 appareils, push/pull) maintenant que le Worker est en ligne
+3. **Audit de sécurité externe** (optionnel)
+4. **Corriger l'incohérence de version historique** : le tag/release `v0.4.0` existe mais pointait sur un commit à `package.json` 0.1.0
