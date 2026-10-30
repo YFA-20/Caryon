@@ -35,13 +35,14 @@ jobs:
       - name: Install (reproductible)
         run: npm ci
 
-      - name: Build production
-        run: npm run build
-
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Tests E2E
+      # `test:e2e` construit d'abord l'app en mode test E2E
+      # (NEXT_PUBLIC_E2E_TEST_BUILD=1 -> KDF allégé Argon2id 64 KiB, t=1).
+      # Le build de production (deploy.yml) n'utilise JAMAIS ce flag :
+      # le KDF reste Argon2id 64 MiB, t=3. Voir src/lib/env.ts.
+      - name: Build E2E + tests Playwright
         run: npm run test:e2e
 
       - name: Upload Playwright report

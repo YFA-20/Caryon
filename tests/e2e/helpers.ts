@@ -148,12 +148,16 @@ export async function gotoUnlocked(
   const label = NAV_LABELS[url];
   if (!label) throw new Error(`Pas de libellé de navigation pour ${url}`);
   const link = page.getByRole("link", { name: label, exact: true }).first();
+  if (!(await link.isVisible({ timeout: 2_000 }).catch(() => false))) {
+    // Mobile : la sidebar est dans le drawer, fermé par défaut
+    const width = page.viewportSize()?.width ?? 1280;
+    if (width < 768) {
+      await page.getByRole("button", { name: "Ouvrir le menu de navigation" }).click();
+    }
+  }
   await link.click();
   await expect(page).toHaveURL(new RegExp(`${url}$`));
-  // Attendre le heading de la page. Sur certaines pages (candidatures), le h1
-  // est toujours dans le DOM mais le contenu est en skeleton : attendre que le
-  // skeleton disparaisse d'abord, sinon toBeVisible peut rater selon le timing.
+  // Attendre le heading de la page (le contenu peut être en skeleton au départ)
   const content = page.getByRole("heading", { name: heading });
-  await expect(content).toBeAttached({ timeout: 15_000 });
   await expect(content).toBeVisible({ timeout: 30_000 });
 }

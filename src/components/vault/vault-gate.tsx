@@ -19,6 +19,7 @@ import {
   verifyBackupIntegrity,
 } from "@/lib/vault/backup-service";
 import { getSettings } from "@/lib/vault/goal-repository";
+import { isTestBuild } from "@/lib/env";
 import { RestoreFromCloud } from "@/components/vault/restore-from-cloud";
 
 /**
@@ -135,7 +136,7 @@ export function VaultGate({ children }: { children: React.ReactNode }) {
     }
     setBusy(true);
     try {
-      await createVault(passphrase, { testMode: process.env.NODE_ENV === "test" });
+      await createVault(passphrase, { testMode: isTestBuild() });
       // Défaut 15 min pour un nouveau coffre
       setAutoLockMs(15 * 60 * 1000);
       touchActivity(); // FIX: démarre le timer d'inactivité à la création
@@ -152,7 +153,7 @@ export function VaultGate({ children }: { children: React.ReactNode }) {
     setError(null);
     setBusy(true);
     try {
-      await unlockVault(passphrase, { testMode: process.env.NODE_ENV === "test" });
+      await unlockVault(passphrase, { testMode: isTestBuild() });
       // Charge autoLockMs depuis les settings chiffrées
       try {
         const settings = await getSettings();
