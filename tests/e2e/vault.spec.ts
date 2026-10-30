@@ -164,7 +164,7 @@ test.describe("Velora — coffre-fort et candidatures", () => {
 
     // Vérifie que la modification est appliquée
     await expect(page.getByText("Développeur full-stack")).toBeVisible();
-    await expect(page.getByText("Envoyée")).toBeVisible();
+    await expect(page.getByText("Envoyée").first()).toBeVisible();
   });
 
   test("verrouillage manuel retourne à l'écran de connexion", async ({ page, isMobile }) => {
