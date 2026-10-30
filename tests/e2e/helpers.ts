@@ -17,11 +17,31 @@ export async function resetStorage(page: Page, context: BrowserContext) {
   await page.goto("/");
   await page.evaluate(() => {
     sessionStorage.clear();
+    // Ferme d'abord toutes les connexions ouvertes (Dexie) sinon deleteDatabase
+    // reste bloqué en onblocked et la base n'est jamais supprimée.
     return new Promise<void>((resolve) => {
-      const req = indexedDB.deleteDatabase("velora");
-      req.onsuccess = () => resolve();
-      req.onerror = () => resolve();
-      req.onblocked = () => resolve();
+      const req = indexedDB.open("velora");
+      req.onsuccess = () => {
+        const db = req.result;
+        db.close();
+        const del = indexedDB.deleteDatabase("velora");
+        del.onsuccess = () => resolve();
+        del.onerror = () => resolve();
+        del.onblocked = () => resolve();
+      };
+      req.onerror = () => {
+        const del = indexedDB.deleteDatabase("velora");
+        del.onsuccess = () => resolve();
+        del.onerror = () => resolve();
+        del.onblocked = () => resolve();
+      };
+      req.onupgradeneeded = () => {
+        req.result.close();
+        const del = indexedDB.deleteDatabase("velora");
+        del.onsuccess = () => resolve();
+        del.onerror = () => resolve();
+        del.onblocked = () => resolve();
+      };
     });
   });
   await page.reload();
@@ -126,5 +146,9 @@ export async function gotoUnlocked(
   if (!label) throw new Error(`Pas de libellé de navigation pour ${url}`);
   await page.getByRole("link", { name: label, exact: true }).first().click();
   await expect(page).toHaveURL(new RegExp(`${url}$`));
+  // Attendre la fin du chargement (skeleton) puis le heading de la page
+  await expect(page.getByText(/Déchiffrement de vos données/))
+    .toBeHidden({ timeout: 30_000 })
+    .catch(() => null);
   await expect(page.getByRole("heading", { name: heading })).toBeVisible({ timeout: 30_000 });
 }
