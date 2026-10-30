@@ -157,7 +157,7 @@ test.describe("Velora — coffre-fort et candidatures", () => {
 
     // Modifie le poste et le statut
     await page.getByLabel(/Poste/i).fill("Développeur full-stack");
-    await page.getByLabel(/Statut/i).selectOption("envoyee");
+    await page.locator("#status").selectOption("envoyee");
 
     // Enregistre
     await page.getByRole("button", { name: /Enregistrer les modifications/i }).click();

@@ -43,12 +43,11 @@ test.describe("Velora — dashboard « Aujourd'hui »", () => {
     await page.getByRole("button", { name: "Mode démo" }).click();
     // Le bandeau démo a role="status", mais les toasts aussi : on le cible par son texte
     await expect(page.getByText(/données affichées sont fictives/)).toBeVisible();
-    // Le dashboard recharge les données démo seedées : attendre le heading
-    // « Votre pipeline » (rendu uniquement quand les données fictives sont lues)
-    // puis les indicateurs.
-    await expect(page.getByRole("heading", { name: "Votre pipeline" }).first()).toBeVisible({
-      timeout: 60_000,
-    });
+    // Le dashboard recharge les données démo seedées : attendre que le chargement
+    // soit fini (le skeleton disparaît) puis les indicateurs. Le heading
+    // « Votre pipeline » n'existe qu'avec des données réelles : en démo ce sont les
+    // StatCard qui rendent.
+    await expect(page.getByText(/Déchiffrement de vos données/)).toBeHidden({ timeout: 60_000 });
     await expect(page.getByText("Actives", { exact: true })).toBeVisible({ timeout: 60_000 });
     await expect(page.getByText("Entretiens", { exact: true })).toBeVisible();
     await expect(page.getByText("Relances", { exact: true })).toBeVisible();
