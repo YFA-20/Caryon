@@ -283,7 +283,13 @@ export async function syncNow(): Promise<{ pushed: number; pulled: number }> {
     store.setStatus("idle");
     return { pushed, pulled };
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Erreur de synchronisation";
+    // Un TypeError "Failed to fetch" = navigateur hors ligne ou serveur
+    // injoignable : on affiche un message en français, pas le message brut.
+    const raw = err instanceof Error ? err.message : "";
+    const message =
+      raw === "Failed to fetch" || raw.includes("NetworkError")
+        ? "Serveur de synchronisation injoignable. Vérifiez votre connexion et l'URL du serveur."
+        : raw || "Erreur de synchronisation";
     store.setStatus("error");
     store.setLastError(message);
     throw err;

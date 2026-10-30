@@ -196,7 +196,11 @@ export default function ParametresPage() {
       );
     } catch (err) {
       console.error("[parametres] Erreur sync:", err);
-      setErrorSync(err instanceof Error ? err.message : "Erreur de synchronisation.");
+      setErrorSync(
+        err instanceof Error && err.message !== "Failed to fetch"
+          ? err.message
+          : "Serveur injoignable. Vérifiez votre connexion et l'URL du serveur."
+      );
       toastError("La synchronisation a \u00e9chou\u00e9.");
     } finally {
       setSyncing(false);
