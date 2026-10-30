@@ -5,6 +5,27 @@ Toutes les modifications notables de Velora sont documentées dans ce fichier.
 Le format est inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le projet
 adhere au [Versionnage Semantique](https://semver.org/lang/fr/).
 
+## [0.3.0] — 2026-10-30
+
+### Ajoute — Accessibilité WCAG 2.2 AA (PR #36)
+
+- **Audit complet** de 49 composants et 15 pages, rapport dans `docs/A11Y.md`, 27 tests dédiés (`tests/unit/a11y.test.ts`).
+- **Corrections** : lien d'évitement « Aller au contenu principal », Kanban utilisable au clavier (`KeyboardSensor`), focus trap sur les 3 modales (nouveau hook `useFocusTrap`), hiérarchie de titres corrigée (h1→h2), `scope="col"` sur tous les tableaux.
+
+### Corrige — Fiabilité de la suite E2E (PR #36)
+
+- **Build E2E dédié** (`npm run build:e2e`, flag `NEXT_PUBLIC_E2E_TEST_BUILD=1`) avec KDF allégé réservé aux tests : création du coffre 10-30 s → ~0,8 s en CI. Garde-fou unitaire (`tests/unit/e2e-build-guard.test.ts`) : le flag n'existe dans aucun workflow de déploiement, la production garde Argon2id 64 MiB / t=3.
+- **Serveur statique E2E fidèle à Cloudflare** : `/candidatures` sert `candidatures.html` (contenu + CSP du bon fichier), plus de fallback `index.html` avec la mauvaise CSP (cause des pages vides interminables).
+- **`CoverLetterGenerator` en import dynamique** : le chunk `@mlc-ai/web-llm` (6,1 Mo) ne bloque plus le rendu de `/candidatures`.
+- Sélecteurs E2E durcis (headings doublons, regex date fr-FR, `#status`, vue Liste pour le badge de statut, test démo validé sur le bandeau + toast).
+- **Résultat** : 37 tests E2E passent en ~41 s (contre 28 min et 9 échecs avant).
+
+### Chore — Documentation
+
+- README, ROADMAP, DEPLOYMENT, ARCHITECTURE alignés sur le Service Worker v3 réel (assets statiques uniquement, jamais les navigations HTML) ; accents corrigés dans la roadmap.
+
+---
+
 ## [Non publie]
 
 ### Ajoute — Phase 2 : Intelligence (IA opt-in)
@@ -113,7 +134,7 @@ adhere au [Versionnage Semantique](https://semver.org/lang/fr/).
 
 ---
 
-## [0.1.0] — A venir (MVP local-first)
+## [0.1.0] — Fondation (historique)
 
 *Criteres d'acceptation : voir le milestone
 [v0.1.0 — MVP local-first](https://github.com/YFA-20/Caryon/milestones).*
