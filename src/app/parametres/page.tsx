@@ -175,9 +175,7 @@ export default function ParametresPage() {
       useSyncStore.getState().setEnabled(syncEnabled);
       setSavedSync(true);
       setTimeout(() => setSavedSync(false), 3000);
-      toastSuccess(
-        syncEnabled ? "Synchronisation activ\u00e9e." : "Synchronisation d\u00e9sactiv\u00e9e."
-      );
+      toastSuccess(syncEnabled ? "Synchronisation activée." : "Synchronisation désactivée.");
     } catch (err) {
       console.error("[parametres] Erreur sauvegarde sync:", err);
       setErrorSync("Erreur lors de la sauvegarde.");
@@ -191,9 +189,7 @@ export default function ParametresPage() {
     try {
       const { syncNow } = await import("@/lib/sync/sync-service");
       const result = await syncNow();
-      toastSuccess(
-        `Synchronisation termin\u00e9e : ${result.pushed} envoy\u00e9s, ${result.pulled} re\u00e7us.`
-      );
+      toastSuccess(`Synchronisation terminée : ${result.pushed} envoyés, ${result.pulled} reçus.`);
     } catch (err) {
       console.error("[parametres] Erreur sync:", err);
       setErrorSync(
@@ -201,7 +197,7 @@ export default function ParametresPage() {
           ? err.message
           : "Serveur injoignable. Vérifiez votre connexion et l'URL du serveur."
       );
-      toastError("La synchronisation a \u00e9chou\u00e9.");
+      toastError("La synchronisation a échoué.");
     } finally {
       setSyncing(false);
     }
@@ -654,8 +650,8 @@ export default function ParametresPage() {
             <div>
               <CardTitle className="text-lg">Synchronisation multi-appareils</CardTitle>
               <CardDescription>
-                Synchronisez votre coffre entre plusieurs appareils. Vos donn\u00e9es restent
-                chiffr\u00e9es de bout en bout.
+                Synchronisez votre coffre entre plusieurs appareils. Vos données restent chiffrées
+                de bout en bout.
               </CardDescription>
             </div>
           </div>
@@ -672,9 +668,8 @@ export default function ParametresPage() {
               <span>
                 <span className="block font-medium text-primary">Activer la synchronisation</span>
                 <span className="mt-1 block text-xs text-secondary">
-                  Envoyez vos donn\u00e9es chiffr\u00e9es vers un serveur pour les synchroniser
-                  entre appareils. Le serveur ne peut pas les lire (chiffrement AES-256-GCM
-                  c\u00f4t\u00e9 client).
+                  Envoyez vos données chiffrées vers un serveur pour les synchroniser entre
+                  appareils. Le serveur ne peut pas les lire (chiffrement AES-256-GCM côté client).
                 </span>
               </span>
             </label>
@@ -692,7 +687,7 @@ export default function ParametresPage() {
                 className={inputClass}
               />
               <span className="mt-1 block text-xs text-secondary">
-                Laissez vide pour utiliser le serveur par d\u00e9faut.
+                Laissez vide pour utiliser le serveur par défaut.
               </span>
             </label>
 
@@ -713,35 +708,33 @@ export default function ParametresPage() {
                     }
                   >
                     {syncStatus === "syncing"
-                      ? "Synchronisation\u2026"
+                      ? "Synchronisation…"
                       : syncStatus === "error"
                         ? "Erreur"
                         : lastSyncAt
-                          ? "\u00c0 jour"
-                          : "Jamais synchronis\u00e9"}
+                          ? "À jour"
+                          : "Jamais synchronisé"}
                   </Badge>
                 </div>
                 {lastSyncAt && (
                   <p className="mt-1 text-secondary">
-                    Derni\u00e8re synchronisation : {new Date(lastSyncAt).toLocaleString("fr-FR")}
+                    Dernière synchronisation : {new Date(lastSyncAt).toLocaleString("fr-FR")}
                   </p>
                 )}
                 {syncError && <p className="mt-1 text-danger">{syncError}</p>}
                 <p className="mt-1 text-secondary/60">
-                  ID de cet appareil :{" "}
-                  <code className="font-mono">{deviceId.slice(0, 8)}\u2026</code>
+                  ID de cet appareil : <code className="font-mono">{deviceId.slice(0, 8)}…</code>
                 </p>
               </div>
             )}
 
-            {/* Avertissement confidentialit\u00e9 */}
+            {/* Avertissement confidentialité */}
             <div className="flex items-start gap-2 rounded-lg border border-lavender/25 bg-lavender/5 p-3 text-xs text-secondary">
               <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-lavender" aria-hidden />
               <span>
-                Vos donn\u00e9es sont chiffr\u00e9es avec votre cl\u00e9 ma\u00eetre avant
-                d\u2019\u00eatre envoy\u00e9es. Le serveur de synchronisation ne re\u00e7oit que du
-                ciphertext illisible sans votre phrase secr\u00e8te. Aucun mot de passe, aucune clé
-                maître n’est jamais transmise.
+                Vos données sont chiffrées avec votre clé maître avant d’être envoyées. Le serveur
+                de synchronisation ne reçoit que du ciphertext illisible sans votre phrase secrète.
+                Aucun mot de passe, aucune clé maître n’est jamais transmise.
               </span>
             </div>
 
@@ -751,7 +744,7 @@ export default function ParametresPage() {
                 <Save className="h-4 w-4" aria-hidden />
                 Enregistrer
               </Button>
-              {savedSync && <Badge variant="success">Enregistr\u00e9</Badge>}
+              {savedSync && <Badge variant="success">Enregistré</Badge>}
               {errorSync && <span className="text-xs text-danger">{errorSync}</span>}
               {syncEnabled && (
                 <Button type="button" variant="outline" onClick={handleSyncNow} disabled={syncing}>
@@ -760,7 +753,7 @@ export default function ParametresPage() {
                   ) : (
                     <RefreshCw className="h-4 w-4" aria-hidden />
                   )}
-                  {syncing ? "Synchronisation\u2026" : "Synchroniser maintenant"}
+                  {syncing ? "Synchronisation…" : "Synchroniser maintenant"}
                 </Button>
               )}
             </div>

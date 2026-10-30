@@ -44,8 +44,8 @@ export function KanbanCard({ application, onEdit, onDelete, isDragging }: Kanban
       {...listeners}
       role="button"
       tabIndex={0}
-      aria-roledescription="carte de candidature d\u00e9pla\u00e7able"
-      aria-label={`${application.position} chez ${application.company}. Espace pour saisir, fl\u00e8ches pour d\u00e9placer, Entr\u00e9e pour d\u00e9poser.`}
+      aria-roledescription="carte de candidature déplaçable"
+      aria-label={`${application.position} chez ${application.company}. Espace pour saisir, flèches pour déplacer, Entrée pour déposer.`}
       className={cn(
         "group cursor-grab rounded-xl border border-subtle bg-card p-3 shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing",
         dragging && "opacity-50 shadow-lg ring-2 ring-lavender"
