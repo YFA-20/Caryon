@@ -81,7 +81,7 @@ Définis dans `next.config.ts` (`headers()`) et **dupliqués dans `out/_headers`
 - Assets statiques (`/_next/static/*`, polices, icônes) : `Cache-Control: public, max-age=31536000, immutable`.
 - `manifest.webmanifest` : `Cache-Control: no-cache` (mise à jour fiable de la PWA).
 - HTML : `Cache-Control: no-cache` (évite les écrans vierges après F5).
-- Pas de Service Worker : les navigations HTML ne sont jamais interceptées. La PWA reste installable via le manifest.
+- Service Worker v3 : il ne gère QUE les assets statiques immutables (`/_next/static/*`), jamais les navigations HTML (cause des écrans vierges F5, PR #26/#27).
 
 ## Option A — Déploiement via intégration native Cloudflare Pages (recommandé)
 
@@ -202,7 +202,7 @@ Le workflow `.github/workflows/deploy-worker.yml` déploie automatiquement le Wo
 - [ ] L'app se charge en HTTPS, sans erreur console.
 - [ ] **La page n'est PAS blanche** (vérifier que l'hydratation React fonctionne).
 - [ ] Le manifest PWA est servi (`/manifest.webmanifest`) et l'installation est proposée.
-- [ ] Le manifest PWA est servi et l'installation est proposée (pas de Service Worker).
+- [ ] Le manifest PWA est servi, l'installation est proposée, et `/sw.js` v3 est servi (assets statiques uniquement).
 - [ ] Les en-têtes de sécurité sont présents (`curl -I`).
 - [ ] La CSP contient des hashes `sha256-` et ne bloque pas l'app (aucune violation dans la console).
 

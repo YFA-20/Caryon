@@ -115,7 +115,8 @@ l'utilisateur, sur son appareil.
 │   └── store/                      # Zustand (etat UI : coffre, demo, preferences)
 │       # JAMAIS de cles ni de phrases dans le store
 ├── public/
-│   ├── manifest.webmanifest        # PWA (installable, pas de Service Worker)
+│   ├── manifest.webmanifest        # PWA installable
+│   ├── sw.js                       # SW v3 : assets statiques uniquement, jamais les navigations HTML
 │   └── _headers                    # CSP par page + en-tetes de securite (hashes SHA-256 auto)
 ├── scripts/
 │   ├── update-csp-hashes.mjs       # Postbuild : calcule les hashes des scripts inline

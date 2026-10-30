@@ -50,12 +50,18 @@ test.describe("Velora — smoke", () => {
     expect(csp2).not.toBe(csp);
   });
 
-  test("aucun service worker n'est servi (supprimé, voir PR #27)", async ({ page }) => {
+  test("le service worker v3 est servi (assets statiques uniquement, jamais les navigations HTML)", async ({
+    page,
+  }) => {
     const response = await page.goto("/sw.js");
-    // Le serveur statique sert le fallback SPA (index.html) avec 200, mais ce
-    // n'est PAS un service worker : on vérifie le Content-Type (HTML, pas JS).
     expect(response?.ok()).toBe(true);
-    expect(response?.headers()["content-type"] ?? "").toContain("text/html");
+    expect(response?.headers()["content-type"] ?? "").toContain("javascript");
+    const body = await response?.text();
+    // Garde-fou : le SW v3 a un handler fetch MAIS ne doit jamais intercepter
+    // les navigations HTML (cause des écrans vierges F5, PR #26/#27)
+    expect(body).toContain('addEventListener("fetch"');
+    expect(body).toContain('request.mode === "navigate"');
+    expect(body).toContain("_next/static");
   });
 
   test("aucun appel réseau externe n'est émis au chargement", async ({ page }) => {

@@ -12,7 +12,7 @@ Les jalons sont aussi suivis via les [Milestones GitHub](https://github.com/YFA-
 - [x] Design system (tokens, typographie serif/sans, composants de base)
 - [x] Interface responsive (sidebar → barre inférieure sur mobile)
 - [x] Dashboard « Aujourd'hui » (KPIs, pipeline, événements à venir)
-- [x] PWA (manifest + icônes installables, sans Service Worker)
+- [x] PWA (manifest, icônes, Service Worker v3 assets statiques uniquement)
 - [x] État UI Zustand (contrat de sécurité : jamais de clé dans le store)
 - [x] CI/CD (GitHub Actions : ci, security, e2e, release, deploy)
 - [x] Deploiement Cloudflare Pages (statique, `output: "export"`)

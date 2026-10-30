@@ -58,19 +58,19 @@ pas annoncée par l'interface**.
 
 ## Stack technique
 
-| Couche      | Technologie                                                           |
-| ----------- | --------------------------------------------------------------------- |
-| Framework   | Next.js (App Router, sortie statique `output: "export"`)              |
-| Langage     | TypeScript **strict** (`noUncheckedIndexedAccess`, etc.)              |
-| UI          | React 19, Tailwind CSS, Lucide Icons                                  |
-| État        | Zustand                                                               |
-| Stockage    | Dexie.js (IndexedDB), enregistrements chiffrés                        |
-| Crypto      | Web Crypto API (AES-256-GCM) + Argon2id (phase coffre)                |
-| Validation  | Zod (à chaque frontière de confiance)                                 |
-| Graphiques  | Recharts                                                              |
-| PWA         | Manifest installable (pas de Service Worker, voir docs/DEPLOYMENT.md) |
-| Tests       | Vitest (unitaires), Playwright (E2E)                                  |
-| Déploiement | Cloudflare Pages (statique)                                           |
+| Couche      | Technologie                                                                             |
+| ----------- | --------------------------------------------------------------------------------------- |
+| Framework   | Next.js (App Router, sortie statique `output: "export"`)                                |
+| Langage     | TypeScript **strict** (`noUncheckedIndexedAccess`, etc.)                                |
+| UI          | React 19, Tailwind CSS, Lucide Icons                                                    |
+| État        | Zustand                                                                                 |
+| Stockage    | Dexie.js (IndexedDB), enregistrements chiffrés                                          |
+| Crypto      | Web Crypto API (AES-256-GCM) + Argon2id (phase coffre)                                  |
+| Validation  | Zod (à chaque frontière de confiance)                                                   |
+| Graphiques  | Recharts                                                                                |
+| PWA         | Manifest + Service Worker v3 (assets statiques uniquement, jamais les navigations HTML) |
+| Tests       | Vitest (unitaires), Playwright (E2E)                                                    |
+| Déploiement | Cloudflare Pages (statique)                                                             |
 
 ## Architecture & confidentialité
 
