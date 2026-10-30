@@ -157,6 +157,11 @@ export async function gotoUnlocked(
   }
   await link.click();
   await expect(page).toHaveURL(new RegExp(`${url}$`));
+  // Next.js prefetch le JSON RSC de la route au survol, mais pas toujours le
+  // chunk JS de la page. Sur les runners CI lents, le clic déclenche alors le
+  // chargement du chunk (qui embarque ai-service statique) : on attend que le
+  // document soit complètement chargé avant de chercher le heading.
+  await page.waitForLoadState("load");
   // Attendre le heading de la page. Apres un clic sidebar, Next.js charge le
   // chunk de la page (qui embarque ai-service -> webllm-engine statique) avant
   // le rendu : sur les runners CI lents, 30-60 s d'expect ne suffisent pas.
