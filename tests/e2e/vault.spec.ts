@@ -162,9 +162,12 @@ test.describe("Velora — coffre-fort et candidatures", () => {
     // Enregistre
     await page.getByRole("button", { name: /Enregistrer les modifications/i }).click();
 
-    // Vérifie que la modification est appliquée
+    // Vérifie que la modification est appliquée : en vue kanban, le statut est le
+    // badge de la colonne (span, pas un heading).
     await expect(page.getByText("Développeur full-stack")).toBeVisible();
-    await expect(page.getByText("Envoyée").first()).toBeVisible();
+    await expect(page.getByText("Envoyée", { exact: true }).first()).toBeVisible({
+      timeout: 10_000,
+    });
   });
 
   test("verrouillage manuel retourne à l'écran de connexion", async ({ page, isMobile }) => {

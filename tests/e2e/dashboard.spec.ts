@@ -43,8 +43,10 @@ test.describe("Velora — dashboard « Aujourd'hui »", () => {
     await page.getByRole("button", { name: "Mode démo" }).click();
     // Le bandeau démo a role="status", mais les toasts aussi : on le cible par son texte
     await expect(page.getByText(/données affichées sont fictives/)).toBeVisible();
-    // Après le seed, le dashboard repasse en chargement puis affiche les stats fictives.
-    // On attend directement les StatCard (elles n'apparaissent qu'une fois les données lues).
+    // Le seed prend un moment (création chiffrée de chaque entité) : on attend le
+    // toast de succès « Mode démonstration activé », preuve que le seed est terminé,
+    // puis les StatCard du dashboard rechargé.
+    await expect(page.getByText(/Mode démonstration activé/)).toBeVisible({ timeout: 60_000 });
     await expect(page.getByText("Actives", { exact: true })).toBeVisible({ timeout: 60_000 });
     await expect(page.getByText("Entretiens", { exact: true })).toBeVisible();
     await expect(page.getByText("Relances", { exact: true })).toBeVisible();
