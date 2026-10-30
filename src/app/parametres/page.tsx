@@ -668,9 +668,9 @@ export default function ParametresPage() {
               <span>
                 <span className="block font-medium text-primary">Activer la synchronisation</span>
                 <span className="mt-1 block text-xs text-secondary">
-                  Envoie vos donn\u00e9es chiffr\u00e9es vers un serveur pour les synchroniser entre
-                  appareils. Le serveur ne peut pas les lire (chiffrement AES-256-GCM c\u00f4t\u00e9
-                  client).
+                  Envoyez vos donn\u00e9es chiffr\u00e9es vers un serveur pour les synchroniser
+                  entre appareils. Le serveur ne peut pas les lire (chiffrement AES-256-GCM
+                  c\u00f4t\u00e9 client).
                 </span>
               </span>
             </label>
