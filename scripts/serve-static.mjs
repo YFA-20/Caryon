@@ -107,10 +107,24 @@ const server = createServer(async (req, res) => {
     try {
       data = await readFile(filePath);
     } catch {
-      // Fallback SPA : servir index.html pour les routes sans extension.
-      // On garde le chemin servi pour le Content-Type (sinon octet-stream → téléchargement).
-      servedPath = join(ROOT, "index.html");
-      data = await readFile(servedPath);
+      // Résolution comme Cloudflare Pages : /candidatures → candidatures.html
+      // (Next.js output:export produit un .html par route, pas de répertoire).
+      // Sans cette résolution, /candidatures servait index.html avec la CSP de
+      // /candidatures : les scripts inline de la mauvaise page étaient bloqués
+      // et l'hydratation ne démarrait jamais (page vide en E2E).
+      const htmlPath = join(ROOT, `${pathname}.html`);
+      try {
+        data = await readFile(htmlPath);
+        servedPath = htmlPath;
+        // La CSP doit suivre le FICHIER réellement servi (candidatures.html),
+        // pas l'URL demandée (/candidatures) : Cloudflare applique la règle
+        // /candidatures.html au contenu de candidatures.html.
+        pathname = `${pathname}.html`;
+      } catch {
+        // Vrai fallback SPA (route inconnue) : index.html avec la CSP de /*.
+        servedPath = join(ROOT, "index.html");
+        data = await readFile(servedPath);
+      }
     }
     const headers = {
       "Content-Type": MIME[extname(servedPath)] ?? "application/octet-stream",

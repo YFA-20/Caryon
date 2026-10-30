@@ -99,18 +99,6 @@ export async function closeTabAndReload(page: Page) {
   });
 }
 
-/** Libellé du lien de navigation pour une URL de page. */
-const NAV_LABELS: Record<string, string> = {
-  "/candidatures": "Mes candidatures",
-  "/calendrier": "Calendrier",
-  "/documents": "Mes documents",
-  "/journal": "Journal de recherche",
-  "/analyses": "Analyses",
-  "/securite": "Sécurité et confidentialité",
-  "/sauvegardes": "Sauvegardes",
-  "/parametres": "Paramètres",
-};
-
 /**
  * Navigue vers une page profonde puis garantit qu'elle est déverrouillée.
  * Utilise la navigation client (lien sidebar/drawer) plutôt que page.goto :
@@ -124,81 +112,28 @@ export async function gotoUnlocked(
   url: string,
   heading: string | RegExp
 ): Promise<void> {
-  // Si on est déjà sur le dashboard déverrouillé (après createVaultAndUnlock),
-  // ne pas recharger : la session est en mémoire vive et un goto casserait tout.
-  const dashboard = page.getByRole("heading", { name: /Bonjour|Bonsoir|Bonne après-midi/ });
+  // Chargement complet de la page (fiable) : le serveur statique E2E sert
+  // désormais le bon .html par route (comme Cloudflare), donc un goto direct
+  // rend la bonne page avec la bonne CSP. Le KDF est allégé en build E2E
+  // (NEXT_PUBLIC_E2E_TEST_BUILD=1), la restauration de session est rapide.
+  await page.goto(url);
   const portal = page.getByRole("heading", { name: /Déverrouiller le coffre/i });
-  if (!(await dashboard.isVisible({ timeout: 1_000 }).catch(() => false))) {
-    await page.goto("/");
-    // Attendre que le VaultGate ait tranché : portail OU dashboard déverrouillé.
-    await Promise.race([
-      dashboard.waitFor({ state: "visible", timeout: 30_000 }).catch(() => null),
-      portal.waitFor({ state: "visible", timeout: 30_000 }).catch(() => null),
-    ]);
-    if (await portal.isVisible().catch(() => false)) {
-      // Session pas restaurée à temps : déverrouillage manuel (Argon2id lent en CI)
-      await page.getByLabel(/Phrase secrète/i).fill(E2E_PASSPHRASE);
-      await page.getByRole("button", { name: /Déverrouiller/i }).click();
-      await expect(dashboard).toBeVisible({ timeout: 30_000 });
-    }
+  const dashboard = page.getByRole("heading", { name: /Bonjour|Bonsoir|Bonne après-midi/ });
+  await Promise.race([
+    portal.waitFor({ state: "visible", timeout: 30_000 }).catch(() => null),
+    dashboard.waitFor({ state: "visible", timeout: 30_000 }).catch(() => null),
+    page
+      .getByRole("heading", { name: heading })
+      .waitFor({ state: "visible", timeout: 30_000 })
+      .catch(() => null),
+  ]);
+  if (await portal.isVisible().catch(() => false)) {
+    // Coffre verrouillé (pas de session restaurée) : déverrouillage manuel
+    await page.getByLabel(/Phrase secrète/i).fill(E2E_PASSPHRASE);
+    await page.getByRole("button", { name: /Déverrouiller/i }).click();
+    await expect(dashboard).toBeVisible({ timeout: 30_000 });
   }
-  // Le wizard d'onboarding est modal et bloque la sidebar : on le ferme si ouvert
   await skipOnboardingIfOpen(page);
-  // Navigation client via le lien de la sidebar (desktop) ou du drawer (mobile)
-  const label = NAV_LABELS[url];
-  if (!label) throw new Error(`Pas de libellé de navigation pour ${url}`);
-  const link = page.getByRole("link", { name: label, exact: true }).first();
-  if (!(await link.isVisible({ timeout: 2_000 }).catch(() => false))) {
-    // Mobile : la sidebar est dans le drawer, fermé par défaut
-    const width = page.viewportSize()?.width ?? 1280;
-    if (width < 768) {
-      await page.getByRole("button", { name: "Ouvrir le menu de navigation" }).click();
-    }
-  }
-  await link.click();
-  await expect(page).toHaveURL(new RegExp(`${url}$`));
-  // Next.js prefetch le JSON RSC de la route au survol, mais pas toujours le
-  // chunk JS de la page. Sur les runners CI lents, le clic déclenche alors le
-  // chargement du chunk (qui embarque ai-service statique) : on attend que le
-  // document soit complètement chargé avant de chercher le heading.
-  await page.waitForLoadState("load");
-  // Attendre le heading de la page. Apres un clic sidebar, Next.js charge le
-  // chunk de la page (qui embarque ai-service -> webllm-engine statique) avant
-  // le rendu : sur les runners CI lents, 30-60 s d'expect ne suffisent pas.
-  // On attend le heading avec un polling long, et en cas d'echec on loggue
-  // l'etat reel de la page (URL + headings + portail) pour diagnostiquer.
-  const failedRequests: string[] = [];
-  page.on("requestfailed", (r) => failedRequests.push(`${r.url()} -> ${r.failure()?.errorText}`));
-  const consoleErrors: string[] = [];
-  page.on("console", (m) => {
-    if (m.type() === "error") consoleErrors.push(m.text().slice(0, 300));
-  });
   const content = page.getByRole("heading", { name: heading });
-  try {
-    await expect(content).toBeVisible({ timeout: 60_000 });
-  } catch (err) {
-    const state = await page.evaluate(() => ({
-      url: window.location.pathname,
-      headings: Array.from(document.querySelectorAll("h1,h2"))
-        .map((h) => h.textContent?.trim().slice(0, 80))
-        .filter(Boolean),
-      bodyText: document.body?.innerText?.slice(0, 400) ?? "",
-      scripts: Array.from(document.scripts)
-        .map((s) => s.src || "inline")
-        .filter(Boolean),
-      chunkWebllmLoaded: Array.from(document.scripts).some((s) =>
-        (s.src || "").includes("fbe89ba5")
-      ),
-    }));
-    console.error(
-      "[gotoUnlocked] heading introuvable, etat de la page:",
-      JSON.stringify(state, null, 2)
-    );
-    console.error("[gotoUnlocked] requetes en echec:", JSON.stringify(failedRequests, null, 2));
-    console.error(
-      "[gotoUnlocked] console.error:",
-      JSON.stringify(consoleErrors.slice(0, 10), null, 2)
-    );
-    throw err;
-  }
+  await expect(content).toBeVisible({ timeout: 60_000 });
 }

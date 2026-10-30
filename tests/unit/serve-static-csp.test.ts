@@ -120,4 +120,22 @@ describe("serve-static — CSP par chemin", () => {
     const csp = res.headers.get("Content-Security-Policy") ?? "";
     expect(csp).toContain("sha256-");
   });
+
+  it("régression : /candidatures sert le CONTENU de candidatures.html, pas index.html", async () => {
+    const res = await fetch(`http://127.0.0.1:${port}/candidatures`);
+    const body = await res.text();
+    // Le contenu servi doit contenir le script inline de candidatures.html...
+    expect(body).toContain('self.__next_f.push([1,"candidatures"])');
+    // ...et PAS celui de index.html (sinon mauvaise page + mauvaise CSP = page vide)
+    expect(body).not.toContain('self.__next_f.push([1,"home"])');
+    // Et la CSP servie doit être celle de candidatures.html (hash du bon script)
+    const csp = res.headers.get("Content-Security-Policy") ?? "";
+    expect(csp).toContain(`sha256-${sha256('self.__next_f.push([1,"candidatures"])')}`);
+  });
+
+  it("route inconnue : fallback sur index.html", async () => {
+    const res = await fetch(`http://127.0.0.1:${port}/route-inconnue-xyz`);
+    const body = await res.text();
+    expect(body).toContain('self.__next_f.push([1,"home"])');
+  });
 });
