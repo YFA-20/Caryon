@@ -50,9 +50,12 @@ test.describe("Velora — smoke", () => {
     expect(csp2).not.toBe(csp);
   });
 
-  test("le service worker est servi", async ({ page }) => {
+  test("aucun service worker n'est servi (supprimé, voir PR #27)", async ({ page }) => {
     const response = await page.goto("/sw.js");
+    // Le serveur statique sert le fallback SPA (index.html) avec 200, mais ce
+    // n'est PAS un service worker : on vérifie le Content-Type (HTML, pas JS).
     expect(response?.ok()).toBe(true);
+    expect(response?.headers()["content-type"] ?? "").toContain("text/html");
   });
 
   test("aucun appel réseau externe n'est émis au chargement", async ({ page }) => {

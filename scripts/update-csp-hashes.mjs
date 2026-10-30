@@ -130,9 +130,6 @@ const HEADER_TEMPLATE = `/*
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Resource-Policy: same-origin
 
-/sw.js
-  Cache-Control: no-cache
-
 /manifest.webmanifest
   Cache-Control: no-cache
 
