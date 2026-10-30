@@ -157,9 +157,26 @@ export async function gotoUnlocked(
   }
   await link.click();
   await expect(page).toHaveURL(new RegExp(`${url}$`));
-  // Attendre le heading de la page : apres un clic sidebar, Next.js charge le
-  // chunk de la page avant le rendu (lent sur les runners CI). 60 s ici, le
-  // timeout global du test (90 s) sert de filet.
+  // Attendre le heading de la page. Apres un clic sidebar, Next.js charge le
+  // chunk de la page (qui embarque ai-service -> webllm-engine statique) avant
+  // le rendu : sur les runners CI lents, 30-60 s d'expect ne suffisent pas.
+  // On attend le heading avec un polling long, et en cas d'echec on loggue
+  // l'etat reel de la page (URL + headings + portail) pour diagnostiquer.
   const content = page.getByRole("heading", { name: heading });
-  await expect(content).toBeVisible({ timeout: 60_000 });
+  try {
+    await expect(content).toBeVisible({ timeout: 60_000 });
+  } catch (err) {
+    const state = await page.evaluate(() => ({
+      url: window.location.pathname,
+      headings: Array.from(document.querySelectorAll("h1,h2"))
+        .map((h) => h.textContent?.trim().slice(0, 80))
+        .filter(Boolean),
+      bodyText: document.body?.innerText?.slice(0, 400) ?? "",
+    }));
+    console.error(
+      "[gotoUnlocked] heading introuvable, etat de la page:",
+      JSON.stringify(state, null, 2)
+    );
+    throw err;
+  }
 }
