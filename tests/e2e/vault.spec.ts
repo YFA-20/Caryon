@@ -76,8 +76,12 @@ test.describe("Velora — coffre-fort et candidatures", () => {
     // Déverrouille avec la bonne phrase
     await page.getByLabel(/Phrase secrète/i).fill(E2E_PASSPHRASE);
     await page.getByRole("button", { name: /Déverrouiller/i }).click();
+    // Attendre le dashboard déverrouillé (session restaurée en mémoire)
+    await expect(
+      page.getByRole("heading", { name: /Bonjour|Bonsoir|Bonne après-midi/ })
+    ).toBeVisible({ timeout: 30_000 });
 
-    // Va sur candidatures → la donnée est toujours là
+    // Va sur candidatures via la sidebar → la donnée est toujours là
     await gotoUnlocked(page, "/candidatures", /Mes candidatures/i);
     await expect(page.getByText("Studio Lumen")).toBeVisible({ timeout: 10000 });
     await expect(page.getByText("Designer UI")).toBeVisible();

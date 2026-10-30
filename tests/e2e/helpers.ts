@@ -147,11 +147,13 @@ export async function gotoUnlocked(
   // Navigation client via le lien de la sidebar (desktop) ou du drawer (mobile)
   const label = NAV_LABELS[url];
   if (!label) throw new Error(`Pas de libellé de navigation pour ${url}`);
-  await page.getByRole("link", { name: label, exact: true }).first().click();
+  const link = page.getByRole("link", { name: label, exact: true }).first();
+  await link.click();
   await expect(page).toHaveURL(new RegExp(`${url}$`));
-  // Attendre le heading de la page dans le <main>. Si un portail ou un dialog
-  // modal recouvre la page, le heading n'est pas visible : on le détecte et
-  // on échoue avec un message explicite au lieu d'un timeout aveugle.
+  // Attendre le heading de la page. Sur certaines pages (candidatures), le h1
+  // est toujours dans le DOM mais le contenu est en skeleton : attendre que le
+  // skeleton disparaisse d'abord, sinon toBeVisible peut rater selon le timing.
   const content = page.getByRole("heading", { name: heading });
+  await expect(content).toBeAttached({ timeout: 15_000 });
   await expect(content).toBeVisible({ timeout: 30_000 });
 }
