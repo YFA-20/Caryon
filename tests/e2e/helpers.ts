@@ -60,27 +60,40 @@ export async function closeTabAndReload(page: Page) {
   });
 }
 
+/** Libellé du lien de navigation pour une URL de page. */
+const NAV_LABELS: Record<string, string> = {
+  "/candidatures": "Mes candidatures",
+  "/calendrier": "Calendrier",
+  "/documents": "Mes documents",
+  "/journal": "Journal de recherche",
+  "/analyses": "Analyses",
+  "/securite": "Sécurité et confidentialité",
+  "/sauvegardes": "Sauvegardes",
+  "/parametres": "Paramètres",
+};
+
 /**
  * Navigue vers une page profonde puis garantit qu'elle est déverrouillée.
- * Après un goto direct, la restauration de session (sessionStorage → IndexedDB)
- * peut être plus lente que l'hydratation : si le portail "Déverrouiller"
- * apparaît, on déverrouille avec la passphrase de test avant d'attendre le contenu.
+ * Utilise la navigation client (lien sidebar/drawer) plutôt que page.goto :
+ * un goto direct recharge le HTML, la restauration de session (sessionStorage
+ * → IndexedDB → déchiffrement) peut dépasser le délai d'hydratation en CI lent,
+ * et VaultGate retombe sur le portail. La navigation client garde la session
+ * en mémoire vive, comme un vrai utilisateur qui clique dans la sidebar.
  */
 export async function gotoUnlocked(
   page: Page,
   url: string,
   heading: string | RegExp
 ): Promise<void> {
-  await page.goto(url);
-  const portal = page.getByRole("heading", { name: /Déverrouiller le coffre/i });
-  const content = page.getByRole("heading", { name: heading });
-  await Promise.race([
-    content.waitFor({ state: "visible", timeout: 15_000 }).catch(() => null),
-    portal.waitFor({ state: "visible", timeout: 15_000 }).catch(() => null),
-  ]);
-  if (await portal.isVisible().catch(() => false)) {
-    await page.getByLabel(/Phrase secrète/i).fill(E2E_PASSPHRASE);
-    await page.getByRole("button", { name: /Déverrouiller/i }).click();
-  }
-  await expect(content).toBeVisible({ timeout: 30_000 });
+  await page.goto("/");
+  // Dashboard déverrouillé (session restaurée ou mémoire vive)
+  await expect(page.getByRole("heading", { name: /Bonjour|Bonsoir|Bonne après-midi/ })).toBeVisible(
+    { timeout: 30_000 }
+  );
+  // Navigation client via le lien de la sidebar (desktop) ou du drawer (mobile)
+  const label = NAV_LABELS[url];
+  if (!label) throw new Error(`Pas de libellé de navigation pour ${url}`);
+  await page.getByRole("link", { name: label, exact: true }).first().click();
+  await expect(page).toHaveURL(new RegExp(`${url}$`));
+  await expect(page.getByRole("heading", { name: heading })).toBeVisible({ timeout: 30_000 });
 }
