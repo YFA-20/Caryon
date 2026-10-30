@@ -73,13 +73,14 @@ test.describe("Velora — coffre-fort et candidatures", () => {
     // Fermeture d'onglet (sessionStorage vidé) → le coffre est verrouillé
     await closeTabAndReload(page);
 
-    // Déverrouille avec la bonne phrase
+    // Déverrouille avec la bonne phrase. On reste sur /candidatures : après
+    // déverrouillage, VaultGate rend les enfants sans changer d'URL (fix F5),
+    // le heading « Mes candidatures » apparaît directement.
     await page.getByLabel(/Phrase secrète/i).fill(E2E_PASSPHRASE);
     await page.getByRole("button", { name: /Déverrouiller/i }).click();
-    // Attendre le dashboard déverrouillé (session restaurée en mémoire)
-    await expect(
-      page.getByRole("heading", { name: /Bonjour|Bonsoir|Bonne après-midi/ })
-    ).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("heading", { name: /Mes candidatures/i }).first()).toBeVisible({
+      timeout: 30_000,
+    });
 
     // Va sur candidatures via la sidebar → la donnée est toujours là
     await gotoUnlocked(page, "/candidatures", /Mes candidatures/i);
@@ -140,8 +141,8 @@ test.describe("Velora — coffre-fort et candidatures", () => {
     await expect(page.getByText("Atelier Nova")).toBeVisible();
 
     // Vérifie que les dates sont affichées (création + modification)
-    await expect(page.getByText(/Créée le \d{2}\/\d{2}\/\d{4} à \d{2}:\d{2}/)).toBeVisible();
-    await expect(page.getByText(/Modifiée le \d{2}\/\d{2}\/\d{4} à \d{2}:\d{2}/)).toBeVisible();
+    await expect(page.getByText(/Créée le \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}/)).toBeVisible();
+    await expect(page.getByText(/Modifiée le \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}/)).toBeVisible();
 
     // Clique sur "Modifier"
     await page.getByRole("button", { name: /Modifier/i }).click();

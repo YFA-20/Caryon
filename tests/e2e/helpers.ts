@@ -134,6 +134,7 @@ export async function gotoUnlocked(
     await expect(dashboard).toBeVisible({ timeout: 30_000 });
   }
   await skipOnboardingIfOpen(page);
-  const content = page.getByRole("heading", { name: heading });
+  // .first() : certaines pages ont un h1 + un sous-titre de même nom (ex: Calendrier)
+  const content = page.getByRole("heading", { name: heading }).first();
   await expect(content).toBeVisible({ timeout: 60_000 });
 }
