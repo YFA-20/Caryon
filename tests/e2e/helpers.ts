@@ -162,6 +162,12 @@ export async function gotoUnlocked(
   // le rendu : sur les runners CI lents, 30-60 s d'expect ne suffisent pas.
   // On attend le heading avec un polling long, et en cas d'echec on loggue
   // l'etat reel de la page (URL + headings + portail) pour diagnostiquer.
+  const failedRequests: string[] = [];
+  page.on("requestfailed", (r) => failedRequests.push(`${r.url()} -> ${r.failure()?.errorText}`));
+  const consoleErrors: string[] = [];
+  page.on("console", (m) => {
+    if (m.type() === "error") consoleErrors.push(m.text().slice(0, 300));
+  });
   const content = page.getByRole("heading", { name: heading });
   try {
     await expect(content).toBeVisible({ timeout: 60_000 });
@@ -172,10 +178,21 @@ export async function gotoUnlocked(
         .map((h) => h.textContent?.trim().slice(0, 80))
         .filter(Boolean),
       bodyText: document.body?.innerText?.slice(0, 400) ?? "",
+      scripts: Array.from(document.scripts)
+        .map((s) => s.src || "inline")
+        .filter(Boolean),
+      chunkWebllmLoaded: Array.from(document.scripts).some((s) =>
+        (s.src || "").includes("fbe89ba5")
+      ),
     }));
     console.error(
       "[gotoUnlocked] heading introuvable, etat de la page:",
       JSON.stringify(state, null, 2)
+    );
+    console.error("[gotoUnlocked] requetes en echec:", JSON.stringify(failedRequests, null, 2));
+    console.error(
+      "[gotoUnlocked] console.error:",
+      JSON.stringify(consoleErrors.slice(0, 10), null, 2)
     );
     throw err;
   }
