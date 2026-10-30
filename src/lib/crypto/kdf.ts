@@ -1,4 +1,5 @@
 import { fromBase64Url, toBase64Url } from "./bytes";
+import { isTestBuild } from "@/lib/env";
 import type { KdfParams } from "@/lib/schema/vault";
 
 /**
@@ -67,8 +68,7 @@ export async function deriveKey(
   salt: Uint8Array,
   params: KdfParams = DEFAULT_KDF_PARAMS
 ): Promise<{ key: Uint8Array; paramsUsed: KdfParams }> {
-  const isTest = typeof process !== "undefined" && process.env?.NODE_ENV === "test";
-  if (!isTest) {
+  if (!isTestBuild()) {
     try {
       const argon2 = await import("argon2-browser");
       const result = await argon2.hash({

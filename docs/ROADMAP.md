@@ -1,19 +1,19 @@
 # Feuille de route — Velora
 
 Les jalons sont aussi suivis via les [Milestones GitHub](https://github.com/YFA-20/Caryon/milestones).
-**Une version n'est publiee que lorsque ses criteres d'acceptation sont reellement satisfaits.**
+**Une version n'est publiée que lorsque ses critères d'acceptation sont réellement satisfaits.**
 
-> **Mise a jour** : Phases 0-2 sont terminees (PRs #2-#17). La roadmap reflete l'etat reel du projet.
+> **Mise à jour** : Phases 0-2 sont terminées (PRs #2-#17). La roadmap reflète l'état réel du projet.
 
 ---
 
 ## ✅ Phase 0 — Fondation (v0.1.0) — TERMINEE
 
 - [x] Design system (tokens, typographie serif/sans, composants de base)
-- [x] Interface responsive (sidebar → barre inferieure sur mobile)
-- [x] Dashboard « Aujourd'hui » (KPIs, pipeline, evenements a venir)
-- [x] PWA (service worker, manifest, icones)
-- [x] Etat UI Zustand (contrat de securite : jamais de cle dans le store)
+- [x] Interface responsive (sidebar → barre inférieure sur mobile)
+- [x] Dashboard « Aujourd'hui » (KPIs, pipeline, événements à venir)
+- [x] PWA (manifest, icônes, Service Worker v3 assets statiques uniquement)
+- [x] État UI Zustand (contrat de sécurité : jamais de clé dans le store)
 - [x] CI/CD (GitHub Actions : ci, security, e2e, release, deploy)
 - [x] Deploiement Cloudflare Pages (statique, `output: "export"`)
 - [x] CSP restrictive avec hashes SHA-256 pour scripts inline
@@ -84,7 +84,7 @@ confidentialité (la phrase secrète reste le seul verrou).
 - [x] Dependabot configuré (`.github/dependabot.yml` — racine, worker, GitHub Actions)
 - [ ] Tag `v0.4.0` + release GitHub (notes de release auto — à créer après merge)
 - [ ] Audit de sécurité externe (optionnel)
-- [ ] Accessibilité WCAG 2.2 AA (audit complet)
+- [x] Accessibilité WCAG 2.2 AA (audit complet + corrections — `docs/A11Y.md`)
 - [x] Documentation utilisateur (guide complet `docs/USER-GUIDE.md` + FAQ)
 - [x] Choix de licence (MIT — `LICENSE` + `package.json`)
 

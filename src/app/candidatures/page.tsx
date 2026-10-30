@@ -23,7 +23,14 @@ import {
   type TableFilters,
 } from "@/components/applications/applications-table";
 import { ApplicationTimeline } from "@/components/applications/application-timeline";
-import { CoverLetterGenerator } from "@/components/ai/cover-letter-generator";
+import dynamic from "next/dynamic";
+// Le générateur de lettre embarque ai-service (qui pointe vers webllm-engine et
+// le chunk @mlc-ai/web-llm de 6,1 Mo) : chargement dynamique pour ne pas bloquer
+// le rendu de la page candidatures (E2E CI compris).
+const CoverLetterGenerator = dynamic(
+  () => import("@/components/ai/cover-letter-generator").then((m) => m.CoverLetterGenerator),
+  { ssr: false }
+);
 import { SkeletonGrid } from "@/components/common/skeleton";
 import { applicationTypeSchema } from "@/lib/schema/application";
 import {
@@ -583,9 +590,9 @@ function CandidaturesPageInner() {
               <Card key={app.id} className="p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h3 className="truncate font-serif text-lg font-semibold text-primary">
+                    <h2 className="truncate font-serif text-lg font-semibold text-primary">
                       {app.position}
-                    </h3>
+                    </h2>
                     <p className="truncate text-sm text-secondary">{app.company}</p>
                   </div>
                   <Badge className={STATUS_COLORS[app.status]}>

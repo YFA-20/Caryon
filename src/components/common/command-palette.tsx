@@ -22,6 +22,7 @@ import { listJournalEntries } from "@/lib/vault/journal-repository";
 import { listInterviewPreps } from "@/lib/vault/interview-repository";
 import { globalSearch, type SearchResult, type SearchResultType } from "@/lib/search/global-search";
 import { cn } from "@/lib/utils/cn";
+import { useFocusTrap } from "@/hooks/use-focus-trap";
 
 const TYPE_META: Record<SearchResultType, { icon: typeof Briefcase; label: string }> = {
   application: { icon: Briefcase, label: "Candidature" },
@@ -49,6 +50,7 @@ export function CommandPalette() {
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  const dialogRef = useFocusTrap<HTMLDivElement>(open);
 
   // Données en mémoire (chargées à l'ouverture)
   const dataRef = useRef<Awaited<ReturnType<typeof loadAllData>> | null>(null);
@@ -155,11 +157,13 @@ export function CommandPalette() {
 
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 pt-[10vh] backdrop-blur-sm"
       onClick={() => setOpen(false)}
       role="dialog"
       aria-modal="true"
       aria-label="Recherche globale"
+      tabIndex={-1}
     >
       <div
         className="w-full max-w-xl overflow-hidden rounded-2xl border border-subtle bg-card shadow-glow"

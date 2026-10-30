@@ -17,6 +17,7 @@ import { useState } from "react";
 import { CloudDownload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { restoreVaultFromCloud } from "@/lib/sync/vault-meta-service";
+import { isTestBuild } from "@/lib/env";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -50,7 +51,7 @@ export function RestoreFromCloud({ onRestored }: RestoreFromCloudProps) {
     setBusy(true);
     try {
       const result = await restoreVaultFromCloud(trimmedId, passphrase, {
-        testMode: process.env.NODE_ENV === "test",
+        testMode: isTestBuild(),
       });
       if (result.success) {
         onRestored();

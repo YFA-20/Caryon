@@ -10,13 +10,18 @@ permissions:
 
 concurrency:
   group: e2e-${{ github.ref }}
-  cancel-in-progress: true
+  # Ne pas annuler un run E2E en cours quand on push un nouveau commit :
+  # les tests Playwright prennent ~10 min et un push intermédiaire (ex:
+  # fix CI) ne doit pas les interrompre. Le dernier run de la PR gagne.
+  cancel-in-progress: false
 
 jobs:
   playwright:
     name: Tests E2E (Playwright)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # 20 min ne suffit pas : la suite complète (3 projets × ~80 tests avec
+    # retries) dépasse ce délai et GitHub annule le job en CANCELLED.
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -30,13 +35,14 @@ jobs:
       - name: Install (reproductible)
         run: npm ci
 
-      - name: Build production
-        run: npm run build
-
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Tests E2E
+      # `test:e2e` construit d'abord l'app en mode test E2E
+      # (NEXT_PUBLIC_E2E_TEST_BUILD=1 -> KDF allégé Argon2id 64 KiB, t=1).
+      # Le build de production (deploy.yml) n'utilise JAMAIS ce flag :
+      # le KDF reste Argon2id 64 MiB, t=3. Voir src/lib/env.ts.
+      - name: Build E2E + tests Playwright
         run: npm run test:e2e
 
       - name: Upload Playwright report

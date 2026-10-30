@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useFocusTrap } from "@/hooks/use-focus-trap";
 import { AlertTriangle, Eye, ShieldCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -40,13 +41,16 @@ export function AiConsentModal({
   onCancel,
 }: AiConsentModalProps) {
   const [confirmed, setConfirmed] = useState(false);
+  const dialogRef = useFocusTrap<HTMLDivElement>(true);
 
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="ai-consent-title"
+      tabIndex={-1}
     >
       <Card className="w-full max-w-lg p-6">
         <div className="flex items-start justify-between gap-4">

@@ -76,6 +76,17 @@ Tout enregistrement chiffré suit un format versionné sérialisé (JSON binaire
 > **changement sensible** (revue + migration). Un calibrage sur l'appareil (benchmark au
 > premier déverrouillage) est envisagé en Phase 2 — jamais de dégradation silencieuse.
 
+### Paramètres allégés réservés aux tests (jamais en production)
+
+Pour que la suite E2E Playwright reste rapide en CI (Argon2id 64 MiB, t=3 prend
+10-30 s sur les runners partagés), un **build dédié** (`npm run build:e2e`,
+flag `NEXT_PUBLIC_E2E_TEST_BUILD=1`) active `TEST_KDF_PARAMS` (64 KiB, t=1) via
+`src/lib/env.ts`. Ce flag n'est défini **que** dans `.github/workflows/e2e.yml` ;
+les workflows de déploiement ne l'utilisent jamais, et le test unitaire
+`tests/unit/e2e-build-guard.test.ts` vérifie cet invariant. Le build de production
+et `next dev` utilisent toujours les paramètres forts ci-dessus. Aucun coffre
+réel n'est jamais créé avec des paramètres faibles.
+
 ## 6. Gestion des clés en session
 
 - La clé maîtresse déverrouillée vit **uniquement en mémoire** (CryptoKey non extractible

@@ -1,16 +1,15 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("Velora — smoke", () => {
-  test("la page d'accueil se charge avec l'identité Velora", async ({ page, isMobile }) => {
+  test("la page d'accueil se charge avec l'identité Velora", async ({ page }) => {
+    test.setTimeout(30000);
     await page.goto("/");
-    if (!isMobile) {
-      // Le logo « V » + le nom Velora + la signature sont dans la sidebar (desktop)
-      await expect(page.getByText("Velora", { exact: true }).first()).toBeVisible();
-      await expect(page.getByText("Votre carrière, votre espace privé")).toBeVisible();
-    } else {
-      // En mobile, la barre inférieure est présente
-      await expect(page.getByRole("navigation", { name: "Navigation mobile" })).toBeVisible();
-    }
+    // Attendre l'hydratation du VaultGate (IndexedDB vide en E2E = portail "Créer")
+    await expect(
+      page.getByRole("heading", { name: /Créer votre coffre-fort|Déverrouiller le coffre/ }).first()
+    ).toBeVisible({ timeout: 15000 });
+    // La marque Velora est dans le <title> de la page
+    await expect(page).toHaveTitle(/Velora/);
   });
 
   test("le manifest PWA est servi", async ({ page }) => {
@@ -33,21 +32,36 @@ test.describe("Velora — smoke", () => {
     expect(headers["content-security-policy"]).toContain("frame-ancestors 'none'");
   });
 
-  test("la CSP de production (public/_headers) est stricte", async () => {
-    // Vérifie le fichier _headers déployé sur Cloudflare : script-src 'self' sans unsafe-inline.
-    const { readFileSync } = await import("node:fs");
-    const headers = readFileSync("public/_headers", "utf-8");
-    const cspLine = headers
-      .split("\n")
-      .find((l) => l.trim().startsWith("Content-Security-Policy:"));
-    expect(cspLine).toBeTruthy();
-    expect(cspLine).toContain("script-src 'self'");
-    expect(cspLine).not.toContain("script-src 'self' 'unsafe-inline'");
+  test("la CSP servie est stricte et par page (hashes sha256, pas d'unsafe-inline en script-src)", async ({
+    page,
+  }) => {
+    test.setTimeout(30000);
+    const res = await page.goto("/");
+    const csp = res?.headers()["content-security-policy"] ?? "";
+    const scriptSrc = csp.match(/script-src[^;]+/)?.[0] ?? "";
+    expect(scriptSrc).toContain("'self'");
+    expect(scriptSrc).toContain("sha256-");
+    expect(scriptSrc).not.toContain("'unsafe-inline'");
+    expect(csp).toContain("object-src 'none'");
+    // CSP différente sur une page profonde
+    const res2 = await page.goto("/candidatures");
+    const csp2 = res2?.headers()["content-security-policy"] ?? "";
+    expect(csp2).toContain("sha256-");
+    expect(csp2).not.toBe(csp);
   });
 
-  test("le service worker est servi", async ({ page }) => {
+  test("le service worker v3 est servi (assets statiques uniquement, jamais les navigations HTML)", async ({
+    page,
+  }) => {
     const response = await page.goto("/sw.js");
     expect(response?.ok()).toBe(true);
+    expect(response?.headers()["content-type"] ?? "").toContain("javascript");
+    const body = await response?.text();
+    // Garde-fou : le SW v3 a un handler fetch MAIS ne doit jamais intercepter
+    // les navigations HTML (cause des écrans vierges F5, PR #26/#27)
+    expect(body).toContain('addEventListener("fetch"');
+    expect(body).toContain('request.mode === "navigate"');
+    expect(body).toContain("_next/static");
   });
 
   test("aucun appel réseau externe n'est émis au chargement", async ({ page }) => {
