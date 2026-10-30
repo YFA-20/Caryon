@@ -164,6 +164,6 @@ Voir [docs/ROADMAP.md](docs/ROADMAP.md) et les [Milestones GitHub](https://githu
 
 ## Licence
 
-**Aucune licence n'a encore été choisie.** Le projet est actuellement propriétaire
-(tous droits réservés). Le choix de licence fera l'objet d'une décision explicite et
-d'un commit dédié. Voir [#1](https://github.com/YFA-20/Caryon/issues/1).
+**MIT** — voir le fichier [LICENSE](LICENSE). Choix acté le 2026-10-25 (PR #29),
+enregistré dans `package.json` (`"license": "MIT"`) ; GitHub détecte la licence MIT
+sur la page du dépôt.
