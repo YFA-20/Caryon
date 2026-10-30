@@ -39,13 +39,32 @@ export async function createVaultAndUnlock(page: Page) {
   await page.getByLabel("Phrase secrète").first().fill(E2E_PASSPHRASE);
   await page.getByLabel("Confirmer la phrase").fill(E2E_PASSPHRASE);
   await page.getByRole("button", { name: "Créer le coffre" }).click();
-  // Le wizard apparaît après le KDF : on l'attend explicitement (pas de isVisible).
-  const skipBtn = page.getByRole("button", { name: "Passer le guide" });
-  await expect(skipBtn).toBeVisible({ timeout: 30_000 });
-  await skipBtn.click();
+  // Le wizard apparaît après le KDF (Argon2id, >5s en CI) : on l'attend explicitement.
+  const dialog = page.getByRole("dialog", { name: "Guide de démarrage" });
+  await expect(dialog).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("button", { name: "Passer le guide" }).click();
+  await expect(dialog).toBeHidden({ timeout: 10_000 });
   await expect(page.getByRole("heading", { name: /Bonjour|Bonsoir|Bonne après-midi/ })).toBeVisible(
     { timeout: 30_000 }
   );
+}
+
+/**
+ * Ferme le wizard d'onboarding s'il est ouvert (bouton X aria-label="Passer le guide"
+ * ou bouton "Passer" en bas). Indispensable avant toute navigation : le dialog
+ * est modal (aria-modal) et bloque tous les clics sur la sidebar.
+ */
+export async function skipOnboardingIfOpen(page: Page): Promise<void> {
+  const dialog = page.getByRole("dialog", { name: "Guide de démarrage" });
+  if (await dialog.isVisible({ timeout: 3_000 }).catch(() => false)) {
+    const skip = page.getByRole("button", { name: "Passer le guide" });
+    if (await skip.isVisible().catch(() => false)) {
+      await skip.click();
+    } else {
+      await page.getByRole("button", { name: "Passer" }).click();
+    }
+    await expect(dialog).toBeHidden({ timeout: 10_000 });
+  }
 }
 
 /**
@@ -86,10 +105,22 @@ export async function gotoUnlocked(
   heading: string | RegExp
 ): Promise<void> {
   await page.goto("/");
-  // Dashboard déverrouillé (session restaurée ou mémoire vive)
-  await expect(page.getByRole("heading", { name: /Bonjour|Bonsoir|Bonne après-midi/ })).toBeVisible(
-    { timeout: 30_000 }
-  );
+  // Attendre que le VaultGate ait tranché : portail OU dashboard déverrouillé.
+  // Le portail n'apparaît que si la restauration de session échoue (CI lent).
+  const portal = page.getByRole("heading", { name: /Déverrouiller le coffre/i });
+  const dashboard = page.getByRole("heading", { name: /Bonjour|Bonsoir|Bonne après-midi/ });
+  await Promise.race([
+    dashboard.waitFor({ state: "visible", timeout: 30_000 }).catch(() => null),
+    portal.waitFor({ state: "visible", timeout: 30_000 }).catch(() => null),
+  ]);
+  if (await portal.isVisible().catch(() => false)) {
+    // Session pas restaurée à temps : déverrouillage manuel (Argon2id lent en CI)
+    await page.getByLabel(/Phrase secrète/i).fill(E2E_PASSPHRASE);
+    await page.getByRole("button", { name: /Déverrouiller/i }).click();
+    await expect(dashboard).toBeVisible({ timeout: 30_000 });
+  }
+  // Le wizard d'onboarding est modal et bloque la sidebar : on le ferme si ouvert
+  await skipOnboardingIfOpen(page);
   // Navigation client via le lien de la sidebar (desktop) ou du drawer (mobile)
   const label = NAV_LABELS[url];
   if (!label) throw new Error(`Pas de libellé de navigation pour ${url}`);
