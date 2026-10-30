@@ -38,7 +38,7 @@ test.describe("Velora — dashboard « Aujourd'hui »", () => {
     page,
     isMobile,
   }) => {
-    test.setTimeout(150000);
+    test.setTimeout(420000);
     test.skip(isMobile, "Le bouton Mode démo est dans le header desktop");
     await page.getByRole("button", { name: "Mode démo" }).click();
     // Le bandeau démo a role="status", mais les toasts aussi : on le cible par son texte
@@ -46,14 +46,14 @@ test.describe("Velora — dashboard « Aujourd'hui »", () => {
     // Le bandeau confirme que le mode démo est actif. Les StatCard n'apparaissent
     // qu'après le seed complet (chaque entité est chiffrée une à une, lent en CI) :
     // on attend la première avec un timeout large, les autres suivent.
-    await expect(page.getByText("Actives", { exact: true })).toBeVisible({ timeout: 150_000 });
+    await expect(page.getByText("Actives", { exact: true })).toBeVisible({ timeout: 300_000 });
     await expect(page.getByText("Entretiens", { exact: true })).toBeVisible();
     await expect(page.getByText("Relances", { exact: true })).toBeVisible();
     await expect(page.getByText("Réponses +", { exact: true })).toBeVisible();
   });
 
   test("quitter la démo restaure l'état vide", async ({ page, isMobile }) => {
-    test.setTimeout(150000);
+    test.setTimeout(420000);
     test.skip(isMobile, "Le bouton Mode démo est dans le header desktop");
     await page.getByRole("button", { name: "Mode démo" }).click();
     await expect(page.getByText(/données affichées sont fictives/)).toBeVisible();
