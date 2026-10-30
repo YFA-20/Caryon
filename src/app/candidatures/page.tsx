@@ -23,7 +23,14 @@ import {
   type TableFilters,
 } from "@/components/applications/applications-table";
 import { ApplicationTimeline } from "@/components/applications/application-timeline";
-import { CoverLetterGenerator } from "@/components/ai/cover-letter-generator";
+import dynamic from "next/dynamic";
+// Le générateur de lettre embarque ai-service (qui pointe vers webllm-engine et
+// le chunk @mlc-ai/web-llm de 6,1 Mo) : chargement dynamique pour ne pas bloquer
+// le rendu de la page candidatures (E2E CI compris).
+const CoverLetterGenerator = dynamic(
+  () => import("@/components/ai/cover-letter-generator").then((m) => m.CoverLetterGenerator),
+  { ssr: false }
+);
 import { SkeletonGrid } from "@/components/common/skeleton";
 import { applicationTypeSchema } from "@/lib/schema/application";
 import {
