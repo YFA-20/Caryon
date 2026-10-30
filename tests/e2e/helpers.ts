@@ -124,20 +124,23 @@ export async function gotoUnlocked(
   url: string,
   heading: string | RegExp
 ): Promise<void> {
-  await page.goto("/");
-  // Attendre que le VaultGate ait tranché : portail OU dashboard déverrouillé.
-  // Le portail n'apparaît que si la restauration de session échoue (CI lent).
-  const portal = page.getByRole("heading", { name: /Déverrouiller le coffre/i });
+  // Si on est déjà sur le dashboard déverrouillé (après createVaultAndUnlock),
+  // ne pas recharger : la session est en mémoire vive et un goto casserait tout.
   const dashboard = page.getByRole("heading", { name: /Bonjour|Bonsoir|Bonne après-midi/ });
-  await Promise.race([
-    dashboard.waitFor({ state: "visible", timeout: 30_000 }).catch(() => null),
-    portal.waitFor({ state: "visible", timeout: 30_000 }).catch(() => null),
-  ]);
-  if (await portal.isVisible().catch(() => false)) {
-    // Session pas restaurée à temps : déverrouillage manuel (Argon2id lent en CI)
-    await page.getByLabel(/Phrase secrète/i).fill(E2E_PASSPHRASE);
-    await page.getByRole("button", { name: /Déverrouiller/i }).click();
-    await expect(dashboard).toBeVisible({ timeout: 30_000 });
+  const portal = page.getByRole("heading", { name: /Déverrouiller le coffre/i });
+  if (!(await dashboard.isVisible({ timeout: 1_000 }).catch(() => false))) {
+    await page.goto("/");
+    // Attendre que le VaultGate ait tranché : portail OU dashboard déverrouillé.
+    await Promise.race([
+      dashboard.waitFor({ state: "visible", timeout: 30_000 }).catch(() => null),
+      portal.waitFor({ state: "visible", timeout: 30_000 }).catch(() => null),
+    ]);
+    if (await portal.isVisible().catch(() => false)) {
+      // Session pas restaurée à temps : déverrouillage manuel (Argon2id lent en CI)
+      await page.getByLabel(/Phrase secrète/i).fill(E2E_PASSPHRASE);
+      await page.getByRole("button", { name: /Déverrouiller/i }).click();
+      await expect(dashboard).toBeVisible({ timeout: 30_000 });
+    }
   }
   // Le wizard d'onboarding est modal et bloque la sidebar : on le ferme si ouvert
   await skipOnboardingIfOpen(page);
@@ -146,9 +149,9 @@ export async function gotoUnlocked(
   if (!label) throw new Error(`Pas de libellé de navigation pour ${url}`);
   await page.getByRole("link", { name: label, exact: true }).first().click();
   await expect(page).toHaveURL(new RegExp(`${url}$`));
-  // Attendre la fin du chargement (skeleton) puis le heading de la page
-  await expect(page.getByText(/Déchiffrement de vos données/))
-    .toBeHidden({ timeout: 30_000 })
-    .catch(() => null);
-  await expect(page.getByRole("heading", { name: heading })).toBeVisible({ timeout: 30_000 });
+  // Attendre le heading de la page dans le <main>. Si un portail ou un dialog
+  // modal recouvre la page, le heading n'est pas visible : on le détecte et
+  // on échoue avec un message explicite au lieu d'un timeout aveugle.
+  const content = page.getByRole("heading", { name: heading });
+  await expect(content).toBeVisible({ timeout: 30_000 });
 }

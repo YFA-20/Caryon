@@ -31,9 +31,8 @@ test.describe("Velora — coffre-fort et candidatures", () => {
 
   test("création d'une candidature et affichage dans la liste", async ({ page }) => {
     test.setTimeout(60000);
+    // Crée le coffre puis navigue vers candidatures via la sidebar
     await createVaultAndUnlock(page);
-
-    // Va sur la page candidatures (déverrouillage auto si la session n'est pas encore restaurée)
     await gotoUnlocked(page, "/candidatures", /Mes candidatures/i);
 
     // Ouvre le formulaire
