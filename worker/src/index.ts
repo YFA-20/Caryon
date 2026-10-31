@@ -68,8 +68,13 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const MAX_PAYLOAD_SIZE = 20 * 1024 * 1024; // 20 Mo
 
 function corsHeaders(origin: string | null, allowedOrigin: string): HeadersInit {
-  // Autorise uniquement l'origine configurée (pas de wildcard avec credentials).
-  const allowOrigin = origin === allowedOrigin ? allowedOrigin : allowedOrigin;
+  // Autorise l'origine configurée, ou toute origine *.pages.dev / localhost en dev
+  // (le worker ne sert que du ciphertext, jamais de données en clair).
+  const allowOrigin =
+    origin === allowedOrigin ||
+    (origin && (origin.endsWith(".pages.dev") || origin.startsWith("http://localhost") || origin.startsWith("http://127.0.0.1")))
+      ? origin
+      : allowedOrigin;
   return {
     "Access-Control-Allow-Origin": allowOrigin,
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
