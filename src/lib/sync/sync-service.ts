@@ -278,6 +278,19 @@ export async function syncNow(): Promise<{ pushed: number; pulled: number }> {
   store.setStatus("syncing");
   store.setLastError(null);
   try {
+    // Appairage automatique : si le serveur répond 403 (appareil non appairé),
+    // on tente /pairing/init (bootstrap direct si premier appareil, sinon code requis).
+    try {
+      await pushAll();
+    } catch (err) {
+      if (err instanceof Error && err.message.includes("HTTP 403")) {
+        const session = getSession();
+        if (session) {
+          await requestPairing(session.vault.id, "Appareil Velora", "000000").catch(() => {});
+        }
+      }
+      throw err;
+    }
     const pushed = await pushAll();
     const pulled = await pullChanges();
     store.setStatus("idle");
