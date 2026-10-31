@@ -105,10 +105,11 @@ function buildCsp(hashes) {
     // - *.cdn.hf.co : CDN Xet multi-niveaux (us.aws.cdn.hf.co, us.gcp.cdn.hf.co, etc.)
     // - *.xethub.hf.co : pont Xet (transfer.xethub.hf.co, cas-bridge.xethub.hf.co)
     // - raw.githubusercontent.com : bibliothèque WASM du modèle (model_lib)
-    // - sync.caryon.workers.dev : serveur de synchronisation multi-appareils (Phase 3).
-    //   Le serveur ne reçoit que du ciphertext (AES-256-GCM), jamais de données en clair.
+    // - *.workers.dev : serveur de synchronisation multi-appareils (Phase 3), ex
+    //   https://velora-sync.<sous-domaine>.workers.dev. Le serveur ne reçoit que du
+    //   ciphertext (AES-256-GCM), jamais de données en clair.
     // Source : https://huggingface.co/.well-known/meta.json
-    "connect-src 'self' https://huggingface.co https://*.hf.co https://*.cdn.hf.co https://*.xethub.hf.co https://raw.githubusercontent.com https://sync.caryon.workers.dev",
+    "connect-src 'self' https://huggingface.co https://*.hf.co https://*.cdn.hf.co https://*.xethub.hf.co https://raw.githubusercontent.com https://*.workers.dev",
     "worker-src 'self' blob:",
     "manifest-src 'self'",
     "object-src 'none'",

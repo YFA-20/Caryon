@@ -39,7 +39,7 @@ import {
 } from "@/lib/sync/schema";
 
 /** URL par défaut du Worker de sync (peut être surchargée dans les settings). */
-export const DEFAULT_SYNC_ENDPOINT = "https://sync.caryon.workers.dev";
+export const DEFAULT_SYNC_ENDPOINT = "https://velora-sync.workers.dev";
 
 /** Nombre max d'enregistrements dans un batch push. */
 const PUSH_BATCH_SIZE = 100;

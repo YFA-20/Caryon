@@ -683,7 +683,7 @@ export default function ParametresPage() {
                 type="url"
                 value={syncEndpoint}
                 onChange={(e) => setSyncEndpoint(e.target.value)}
-                placeholder="https://sync.caryon.workers.dev"
+                placeholder="https://velora-sync.<sous-domaine>.workers.dev"
                 className={inputClass}
               />
               <span className="mt-1 block text-xs text-secondary">
