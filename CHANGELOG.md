@@ -5,6 +5,31 @@ Toutes les modifications notables de Velora sont documentées dans ce fichier.
 Le format est inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le projet
 adhere au [Versionnage Semantique](https://semver.org/lang/fr/).
 
+## [1.0.0] — 2026-10-31 — Première version stable
+
+Velora est stable : coffre chiffré local-first (AES-256-GCM + Argon2id), gestion complète des
+candidatures (Kanban/liste/tableau), documents chiffrés, calendrier, journal, analyses, sauvegardes
+chiffrées, assistant IA 100 % local (WebLLM/WebGPU, opt-in), synchronisation multi-appareils chiffrée
+(Cloudflare Workers + D1 + R2, appairage par code 6 chiffres), PWA installable, WCAG 2.2 AA.
+
+### Corrige depuis v0.5.0
+
+- **Synchronisation multi-appareils fonctionnelle** : CSP `connect-src` autorise désormais
+  `*.workers.dev` (le serveur réel est `velora-sync.<sous-domaine>.workers.dev`) ; appairage
+  automatique avant le push en cas de HTTP 403 (plus besoin de passer par `/appairage` à la main) ;
+  CORS du worker autorise les origines `*.pages.dev` et localhost.
+- **Erreurs réseau en français** : « Failed to fetch » / « NetworkError » affichent désormais
+  « Serveur de synchronisation injoignable. Vérifiez votre connexion et l'URL du serveur. »
+- **UI** : 38 séquences `\uXXXX` littérales converties en UTF-8 réel dans le texte JSX (paramètres,
+  aria-label Kanban) ; « Envoyez » (impératif) ; « aucune clé maître n'est jamais transmise ».
+
+### Infrastructure
+
+- Worker de synchro déployé (D1 `velora-sync` + R2 `velora-sync-payloads`), CI 100 % verte
+  (typecheck, lint, 559 tests unitaires, 37 tests E2E Playwright, Gitleaks, CodeQL, npm audit).
+
+---
+
 ## [0.5.0] — 2026-10-30
 
 ### Corrige — Fiabilité CI (depuis v0.3.0)

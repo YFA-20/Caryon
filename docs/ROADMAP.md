@@ -78,12 +78,12 @@ que du ciphertext), appairage sécurisé (code 6 chiffres + preuve HMAC), sync
 automatique, révocation d'appareils, restauration cloud sans perte de
 confidentialité (la phrase secrète reste le seul verrou).
 
-## 🔄 Phase 4 — Production & Release (v1.0.0) — EN COURS
+## ✅ Phase 4 — Production & Release (v1.0.0) — TERMINÉE (2026-10-31)
 
 - [x] Protection de la branche `main` (GitHub branch protection + ruleset)
 - [x] Dependabot configuré (`.github/dependabot.yml` — racine, worker, GitHub Actions)
-- [ ] Tag `v0.4.0` + release GitHub (notes de release auto — à créer après merge)
-- [ ] Audit de sécurité externe (optionnel)
+- [x] Releases publiées : v0.3.0, v0.5.0, v1.0.0 (v0.2.0/v0.4.0 existaient déjà comme tags)
+- [-] Audit de sécurité externe (optionnel, reporté)
 - [x] Accessibilité WCAG 2.2 AA (audit complet + corrections — `docs/A11Y.md`)
 - [x] Documentation utilisateur (guide complet `docs/USER-GUIDE.md` + FAQ)
 - [x] Choix de licence (MIT — `LICENSE` + `package.json`)
