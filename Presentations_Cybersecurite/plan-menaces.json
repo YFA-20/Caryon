@@ -1,0 +1,81 @@
+{
+  "theme": {"primary": "221551", "accent": "FF3D71", "background": "FFFFFF", "text": "241A33", "muted": "6E6486", "light": "F3EFFB", "font": "Calibri", "heading_font": "Calibri"},
+  "ratio": "16:9",
+  "footer": "Menaces & défense · profil technique",
+  "slides": [
+    {"layout": "title", "title": "Cybersécurité : menaces avancées et posture de défense", "subtitle": "Panorama des attaques actuelles et leviers de protection pour les équipes IT et sécurité", "author": "[À COMPLÉTER : organisation · date]", "notes": "Deck destiné aux profils techniques : RSSI, IT, développeurs."},
+    {"layout": "big_number", "title": "Détecter et contenir une violation prend des mois", "number": "258 j", "caption": "délai moyen pour identifier (194 j) puis contenir (64 j) une violation de données en 2024. Source : IBM Cost of a Data Breach 2024.", "notes": "L'attaquant a souvent des mois d'avance : d'où l'intérêt de la détection proactive."},
+    {"layout": "section", "number": "01", "title": "Panorama des menaces"},
+    {"layout": "bullets", "title": "Les vecteurs d'attaque dominants", "bullets": [
+      "Identifiants volés : ~31 % des violations sur 10 ans (DBIR)",
+      "Exploitation de failles : 14 % des violations, x3 en un an",
+      "68 % des violations impliquent un facteur humain (DBIR)",
+      "Ransomware : 44 % des violations en 2025 (DBIR)",
+      "Attaques sur la chaîne logistique (fournisseurs, mises à jour)",
+      "Sources : Verizon DBIR 2024-2025, IBM CODB 2024"
+    ], "notes": "Les identifiants volés restent la porte d'entrée numéro un sur la décennie."},
+    {"layout": "two_columns", "title": "Le ransomware : la double extorsion", "left": {"heading": "Comment ça marche", "bullets": [
+      "Vol des données, puis chiffrement des systèmes",
+      "Menace de publier les données volées",
+      "Propagation latérale via les comptes volés",
+      "Cibles : PME, hôpitaux, collectivités, industrie"
+    ]}, "right": {"heading": "Leviers de défense", "bullets": [
+      "Sauvegardes immuables, hors ligne et testées",
+      "Segmentation réseau + comptes à privilèges limités",
+      "MFA résistant au phishing (FIDO2, clés physiques)",
+      "Plan de réponse testé en conditions réelles"
+    ]}, "notes": "Ne jamais payer : aucune garantie de restitution, et cela encourage les attaques."},
+    {"layout": "two_columns", "title": "La chaîne logistique, maillon faible", "left": {"heading": "Pourquoi c'est dangereux", "bullets": [
+      "Un fournisseur compromis ouvre l'accès à tous ses clients",
+      "Mises à jour signées mais compromises (ex. MOVEit)",
+      "Dépendances logicielles invisibles sans SBOM"
+    ]}, "right": {"heading": "Comment se protéger", "bullets": [
+      "Inventaire des fournisseurs et de leurs accès",
+      "Exiger SBOM et sécurité des fournisseurs (NIS2)",
+      "Segmentation des accès fournisseurs, MFA systématique",
+      "Veille sur les vulnérabilités tierces (CVE, KEV)"
+    ]}, "notes": "La directive NIS2 renforce les exigences sur la chaîne d'approvisionnement."},
+    {"layout": "bullets", "title": "Menaces émergentes à surveiller", "bullets": [
+      "IA générative : deepfakes et phishing ciblé automatisé",
+      "Vol de session pour contourner la MFA (attaques AiTM)",
+      "Cloud mal configuré : buckets publics, clés exposées",
+      "Objets connectés et OT : surface d'attaque en explosion",
+      "Infostealers : identifiants volés revendus en masse"
+    ], "notes": "L'IA abaisse le coût des attaques ciblées ; la MFA classique peut être contournée."},
+    {"layout": "section", "number": "02", "title": "Construire sa défense"},
+    {"layout": "bullets", "title": "Zero Trust : ne jamais faire confiance, toujours vérifier", "bullets": [
+      "Chaque accès est vérifié, quel que soit le réseau",
+      "Principe du moindre privilège : droits minimaux",
+      "Micro-segmentation pour limiter la propagation",
+      "MFA résistant au phishing (FIDO2, clés physiques)",
+      "Journalisation centralisée de tous les accès"
+    ], "notes": "Zero Trust part du principe qu'une compromission interne est inévitable."},
+    {"layout": "two_columns", "title": "Détecter, répondre, se rétablir", "left": {"heading": "Détecter", "bullets": [
+      "SOC interne ou supervision externalisée (MSSP)",
+      "EDR sur tous les postes et serveurs",
+      "Alertes corrélées, seuils ajustés",
+      "Renseignement sur les menaces (CTI)"
+    ]}, "right": {"heading": "Répondre & rétablir", "bullets": [
+      "Plan de réponse aux incidents documenté",
+      "Exercices réguliers (tabletop, simulations)",
+      "Sauvegardes restaurables et testées",
+      "Communication de crise préparée"
+    ]}, "notes": "Un plan non testé échoue au moment critique : prévoir des exercices semestriels."},
+    {"layout": "chart", "title": "Cycle de vie moyen d'une violation en 2024", "chart": {"type": "bar", "categories": ["Identifier", "Contenir", "Cycle total"], "series": [{"name": "Jours", "values": [194, 64, 258]}]}, "takeaway": "Une détection interne économise ~1 M$ et raccourcit le cycle de 61 jours.", "source": "IBM Cost of a Data Breach 2024", "notes": "D'où l'intérêt d'investir dans la détection (EDR, SOC) plutôt que seulement dans la prévention."},
+    {"layout": "table", "title": "Par où commencer ? Feuille de route prioritaire", "columns": ["Priorité", "Action", "Gain attendu"], "rows": [
+      ["P1", "MFA partout, résistant au phishing", "Bloque la majorité des accès frauduleux"],
+      ["P1", "Sauvegardes 3-2-1 immuables et testées", "Survie garantie au ransomware"],
+      ["P2", "EDR + journalisation centralisée", "Détection en jours, pas en mois"],
+      ["P2", "Sensibilisation régulière des équipes", "Réduit le facteur humain (68 %)"],
+      ["P3", "Zero Trust et micro-segmentation", "Limite la propagation des attaques"]
+    ], "notes": "Commencer par les P1 : ce sont les mesures au meilleur rapport coût/efficacité."},
+    {"layout": "quote", "quote": "Le défenseur doit réussir à chaque tentative ; l'attaquant n'a besoin de réussir qu'une fois.", "author": "Adage classique de la cybersécurité"},
+    {"layout": "bullets", "title": "Référentiels et ressources", "bullets": [
+      "ANSSI : guides et recommandations (ssi.gouv.fr)",
+      "NIST Cybersecurity Framework 2.0",
+      "ISO/IEC 27001 et MITRE ATT&CK",
+      "Signalement : cybermalveillance.gouv.fr, PHAROS",
+      "En interne : [À COMPLÉTER : contact RSSI / SOC]"
+    ], "notes": "MITRE ATT&CK sert à caler la couverture de détection sur les techniques réelles."}
+  ]
+}
