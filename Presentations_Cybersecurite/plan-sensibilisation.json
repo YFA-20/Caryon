@@ -1,7 +1,7 @@
 {
   "theme": {"primary": "0F2440", "accent": "00B4D8", "background": "FFFFFF", "text": "1B2A3A", "muted": "5B6B7C", "light": "EAF4FB", "font": "Calibri", "heading_font": "Calibri"},
   "ratio": "16:9",
-  "footer": "Sensibilisation cybersecurite",
+  "footer": "Sensibilisation cybersécurité",
   "slides": [
     {"layout": "title", "title": "La cybersécurité commence par vous", "subtitle": "Menaces courantes et bons réflexes pour protéger vos données et votre organisation", "author": "[À COMPLÉTER : organisation · date]", "notes": "Accroche : chacun est une cible potentielle, mais chacun est aussi un maillon de la défense."},
     {"layout": "big_number", "title": "La plupart des failles impliquent l'humain", "number": "68 %", "caption": "des violations de données comportent un facteur humain (erreur ou ingénierie sociale). Source : Verizon DBIR 2024.", "notes": "Insister : la technologie seule ne suffit pas, le comportement compte autant."},
