@@ -1,0 +1,72 @@
+{
+  "theme": {"primary": "0F2440", "accent": "00B4D8", "background": "FFFFFF", "text": "1B2A3A", "muted": "5B6B7C", "light": "EAF4FB", "font": "Calibri", "heading_font": "Calibri"},
+  "ratio": "16:9",
+  "footer": "Sensibilisation cybersecurite",
+  "slides": [
+    {"layout": "title", "title": "La cybersécurité commence par vous", "subtitle": "Menaces courantes et bons réflexes pour protéger vos données et votre organisation", "author": "[À COMPLÉTER : organisation · date]", "notes": "Accroche : chacun est une cible potentielle, mais chacun est aussi un maillon de la défense."},
+    {"layout": "big_number", "title": "La plupart des failles impliquent l'humain", "number": "68 %", "caption": "des violations de données comportent un facteur humain (erreur ou ingénierie sociale). Source : Verizon DBIR 2024.", "notes": "Insister : la technologie seule ne suffit pas, le comportement compte autant."},
+    {"layout": "section", "number": "01", "title": "Comprendre les menaces"},
+    {"layout": "bullets", "title": "Les menaces qui vous visent chaque jour", "bullets": [
+      "Phishing : e-mails, SMS ou appels frauduleux",
+      "Ransomware : vos fichiers chiffrés contre rançon",
+      "Ingénierie sociale : on vous manipule pour obtenir un accès",
+      "Identifiants volés : mots de passe réutilisés ou divulgués",
+      "Appareils non sécurisés : clés USB, Wi-Fi publics, objets connectés"
+    ], "notes": "Exemples concrets : faux support informatique, faux colis, fausse facture."},
+    {"layout": "two_columns", "title": "Spotter un e-mail de phishing", "left": {"heading": "Signaux d'alerte", "bullets": [
+      "Adresse d'expéditeur suspecte ou maquillée",
+      "Urgence artificielle : « agissez maintenant »",
+      "Fautes d'orthographe ou ton inhabituel",
+      "Lien ou pièce jointe inattendu"
+    ]}, "right": {"heading": "Bons réflexes", "bullets": [
+      "Ne cliquez sur rien : survolez le lien pour voir l'adresse réelle",
+      "Vérifiez l'expéditeur par un autre canal",
+      "Signalez le message à votre service informatique",
+      "Supprimez ensuite le message"
+    ]}, "notes": "Astuce : passer la souris sur un lien révèle sa vraie destination."},
+    {"layout": "big_number", "title": "Une fuite de données coûte très cher", "number": "4,88 M$", "caption": "coût moyen mondial d'une violation de données en 2024, un record. Source : IBM Cost of a Data Breach 2024.", "notes": "Ce coût inclut la réponse, la notification, la perte d'activité et la réputation."},
+    {"layout": "section", "number": "02", "title": "Se protéger au quotidien"},
+    {"layout": "bullets", "title": "Des mots de passe qui tiennent la route", "bullets": [
+      "12 caractères minimum : lettres, chiffres, symboles",
+      "Un mot de passe unique par compte, jamais réutilisé",
+      "Utilisez un gestionnaire de mots de passe",
+      "Activez la double authentification (2FA) partout"
+    ], "notes": "Un gestionnaire génère et mémorise des mots de passe forts à votre place."},
+    {"layout": "two_columns", "title": "La double authentification, votre filet de sécurité", "left": {"heading": "Pourquoi c'est efficace", "bullets": [
+      "Même avec un mot de passe volé, le compte reste verrouillé",
+      "Bloque la grande majorité des accès frauduleux",
+      "Protège e-mail, banque et outils professionnels"
+    ]}, "right": {"heading": "Comment l'activer", "bullets": [
+      "Application d'authentification (recommandé)",
+      "Code reçu par SMS (mieux que rien)",
+      "Clé de sécurité physique pour les comptes sensibles"
+    ]}, "notes": "La 2FA est le levier de protection le plus rentable pour un utilisateur."},
+    {"layout": "bullets", "title": "Mettez à jour, sauvegardez, verrouillez", "bullets": [
+      "Activez les mises à jour automatiques (OS, applis, antivirus)",
+      "Appliquez les correctifs de sécurité sans attendre",
+      "Sauvegardez vos données : règle 3-2-1 (3 copies, 2 supports, 1 hors site)",
+      "Verrouillez votre session et chiffrez votre appareil portable"
+    ], "notes": "Règle 3-2-1 : c'est la seule garantie fiable contre un ransomware."},
+    {"layout": "table", "title": "Un incident ? Les bons réflexes", "columns": ["Situation", "Action immédiate", "Qui prévenir"], "rows": [
+      ["E-mail de phishing reçu", "Ne cliquez pas, signalez, supprimez", "Service informatique"],
+      ["Mot de passe compromis", "Changez-le partout + activez la 2FA", "Service informatique"],
+      ["Écran bloqué (ransomware)", "Débranchez du réseau, ne payez pas", "RSSI + autorités"],
+      ["Appareil perdu ou volé", "Verrouillage à distance, changez les mots de passe", "IT + déclaration de vol"]
+    ], "notes": "Ne payez jamais de rançon : contactez cybermalveillance.gouv.fr et les autorités."},
+    {"layout": "chart", "title": "Le coût des violations grimpe chaque année", "chart": {"type": "line", "categories": ["2021", "2022", "2023", "2024"], "series": [{"name": "Coût moyen mondial (M$)", "values": [4.24, 4.35, 4.45, 4.88]}]}, "takeaway": "En quatre ans, la facture moyenne d'une violation a augmenté de 15 %.", "source": "IBM Cost of a Data Breach 2022-2024", "notes": "Tendance haussière : la prévention coûte toujours moins cher que la remédiation."},
+    {"layout": "quote", "quote": "La sécurité n'est pas un produit que l'on achète, c'est un processus que l'on applique au quotidien.", "author": "Bruce Schneier, expert en sécurité informatique"},
+    {"layout": "bullets", "title": "Cinq réflexes à retenir", "bullets": [
+      "1. Vérifiez avant de cliquer",
+      "2. Un mot de passe unique par compte",
+      "3. Activez la double authentification",
+      "4. Mettez à jour vos appareils",
+      "5. Signalez tout doute à l'informatique"
+    ]},
+    {"layout": "bullets", "title": "Besoin d'aide ? Les bonnes adresses", "bullets": [
+      "cybermalveillance.gouv.fr : assistance aux victimes",
+      "PHAROS : signaler un contenu illicite en ligne",
+      "cnil.fr : vos droits sur les données personnelles",
+      "En interne : [À COMPLÉTER : contact du service sécurité]"
+    ], "notes": "Remplacer le dernier point par le vrai contact interne avant diffusion."}
+  ]
+}
