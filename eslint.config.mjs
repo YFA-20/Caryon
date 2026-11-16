@@ -21,6 +21,7 @@ const config = [
       "*.config.mjs",
       "next-env.d.ts",
       "worker/**",
+      "mistral-chat/**",
     ],
   },
   js.configs.recommended,
