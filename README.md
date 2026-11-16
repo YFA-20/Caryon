@@ -121,6 +121,19 @@ npm run verify      # typecheck + lint + format + tests + build
 Conventions : [CONTRIBUTING.md](CONTRIBUTING.md) · Commits : Conventional Commits ·
 Branches : GitHub Flow (`feature/`, `fix/`, `security/`, `refactor/`, `docs/`, `chore/`).
 
+### Chat Mistral (démo locale)
+
+Une app web minimale autonome vit dans [`mistral-chat/`](mistral-chat/README.md) : elle appelle
+l'API Mistral avec le SDK TypeScript officiel (`@mistralai/mistralai`, modèle `mistral-large-4`)
+via un petit serveur Node local qui garde `MISTRAL_API_KEY` côté serveur uniquement.
+
+```bash
+cd mistral-chat
+npm install
+cp .env.example .env   # renseigner MISTRAL_API_KEY
+npm run dev            # → http://localhost:3001
+```
+
 ## Tests
 
 ```bash

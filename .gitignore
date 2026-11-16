@@ -53,3 +53,7 @@ wrangler.toml.local
 worker/node_modules/
 worker/.wrangler/
 worker/dist/
+
+# Chat Mistral (démo locale)
+mistral-chat/node_modules/
+mistral-chat/dist/

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Velora — Chat Mistral (démo locale)</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <main class="chat">
+      <header class="chat-header">
+        <h1>Chat Mistral</h1>
+        <p class="subtitle">
+          Modèle : <code id="model">…</code> — démo locale, la clé API reste côté serveur.
+        </p>
+      </header>
+      <div id="messages" class="messages" aria-live="polite"></div>
+      <form id="composer" class="composer">
+        <input
+          id="prompt"
+          type="text"
+          autocomplete="off"
+          placeholder="Écrivez votre message…"
+          required
+        />
+        <button id="send" type="submit">Envoyer</button>
+      </form>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>
